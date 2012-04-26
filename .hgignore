@@ -1,0 +1,17 @@
+# use glob syntax.
+syntax: glob
+
+.idea*
+*.cache
+*.lock
+*.html.py
+*.pyc
+*.orig
+*~
+\#*\#
+.\#*
+syntax: regexp
+^\.project$
+syntax: regexp
+^\.pydevproject$
+.coverage

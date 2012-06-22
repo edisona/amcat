@@ -154,7 +154,6 @@ class AnalysisSentence(AmcatModel):
         app_label = 'amcat'
         db_table = "analysis_sentences"
         unique_together = ('analysis_article', 'sentence')
-
     def _get_tokens(self, get_words=False):
         tokens = Token.objects.filter(sentence=self).select_related("word", "word__lemma")
         self._tokendict = dict((t.position, t) for t in tokens)
@@ -174,6 +173,8 @@ class AnalysisSentence(AmcatModel):
     def triples(self):
         return list(Triple.objects.filter(parent__sentence=self).select_related("parent", "child", "relation"))
         
+    def __int__(self):
+        return self.id
     
 # Signal handlers to make sure the article analysis queue is filled
 def add_to_queue(*aids):

@@ -56,7 +56,10 @@ class Analysis(AmcatModel):
     plugin = models.ForeignKey(Plugin, null=True)
 
     def get_script(self, **options):
-        return self.plugin.get_instance(analysis=self, **options)
+        try:
+            return self.plugin.get_instance(analysis=self, **options)
+        except TypeError:
+            return self.plugin.get_instance(**options)
 
     class Meta():
         db_table = 'analyses'
@@ -64,6 +67,26 @@ class Analysis(AmcatModel):
 
     def __unicode__(self):
         return self.plugin.label if self.plugin else "No plugin available"
+
+class AnalysisArticleSetQueue(AmcatModel):
+    """
+    An articleset needed to be checked for preprocessing.
+    """ 
+    articleset = models.ForeignKey(ArticleSet)
+
+    @classmethod
+    def add_project(cls, project):
+        """
+        Add whole project (i.e. all articlesets) to queue. 
+        """
+        AnalysisArticleSetQueue.objects.bulk_create(
+            AnalysisArticleSetQueue(articleset=artset)\
+             for artset in project.articlesets.all()
+        )
+
+    class Meta():
+        db_table = 'analysis_articleset_queue'
+        app_label = 'amcat'
 
 class AnalysisQueue(AmcatModel):
     """
@@ -210,15 +233,15 @@ def handle_articlesetarticle(sender, instance, **kargs):
 
 @receiver([post_save], Project)
 def handle_project(sender, instance, **kargs11):
-    add_to_queue(*instance.get_all_articles())
+    AnalysisArticleSetQueue.add_project(instance)
 
 @receiver([post_save, post_delete], AnalysisProject)
 def handle_projectanalysis(sender, instance, **kargs):
-    add_to_queue(*instance.project.get_all_articles())
+    AnalysisArticleSetQueue.add_project(instance.project)
 
 @receiver([post_save], ArticleSet)
 def handle_articleset(sender, instance, **kargs):
-    pass#add_to_queue(*(a.id for a in instance.articles.all().only("id")))
+    AnalysisArticleSetQueue(articleset=instance).save()
 
 
 ###########################################################################

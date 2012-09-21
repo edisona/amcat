@@ -16,11 +16,11 @@
 # You should have received a copy of the GNU Affero General Public        #
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
+from django.core.cache  import cache
 
 from django.db import models
-from django.db import DEFAULT_DB_ALIAS
-
 from django.core.exceptions import ValidationError
+from amcat.tools.caching import _get_cache_key
 
 __all__ = ['AmcatModel']
 
@@ -29,19 +29,24 @@ class AmcatModel(models.Model):
     amcat-specific features."""
     __label__ = 'label'
 
-    def _get_db_and_rq(self, rq=None):
+    def _get_rq(self):
+        """
+        If amcatnavigator is running, see if we can get a request
+        object, with which we check for permissions
+
+        @return: request object or None
+        """
         try:
             from amcatnavigator.utils.auth import get_request
         except:
             pass
-        else: rq = get_request()
-
-        return DEFAULT_DB_ALIAS if not rq else rq.user.db, rq
+        else:
+            return get_request()
 
 
     ### Saving functions ###
-    def save(self, using=None, **kwargs):
-        dbalias, rq = self._get_db_and_rq()
+    def save(self, **kwargs):
+        rq = self._get_rq()
 
         if rq is not None:
             # Check permissions for web user..
@@ -52,16 +57,22 @@ class AmcatModel(models.Model):
             elif not self.can_update(rq.user):
                 raise ValidationError("You're not allowed to update %s" % self)
 
-        super(AmcatModel, self).save(using=using or dbalias, **kwargs)
+        # Invalidate cache
+        cache.delete(_get_cache_key(self, self.id))
 
-    def delete(self, using=None, **kwargs):
-        dbalias, rq = self._get_db_and_rq()
+        super(AmcatModel, self).save(**kwargs)
+
+    def delete(self, **kwargs):
+        rq = self._get_rq()
 
         if rq is not None:
             if not self.can_delete(rq.user):
                 raise ValidationError("You're not allowed to delete %s" % self)
 
-        super(AmcatModel, self).delete(using=using or dbalias, **kwargs)
+        # Invalidate cache
+        cache.delete(_get_cache_key(self, self.id))
+
+        super(AmcatModel, self).delete(**kwargs)
 
 
     ### Check functions ###
@@ -89,3 +100,5 @@ class AmcatModel(models.Model):
             return unicode(getattr(self, self.__label__))
         except AttributeError:
             return unicode(self.id)
+
+    

@@ -19,8 +19,6 @@
 
 # Django settings for amcatnavigator project.
 import os
-import threading
-import collections
 
 from amcat.tools.toolkit import random_alphanum
 
@@ -32,11 +30,19 @@ except ImportError:
 
 DEBUG = True
 
-INSTALLED_APPS = ('amcat', )
+INSTALLED_APPS = (
+    'amcat',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    )
+AUTH_PROFILE_MODULE = 'amcat.UserProfile'
 
-    
+#TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+#NOSE_ARGS = ['--with-progressive','--pdb']
+
+
 # Databases / Caches are defined in ~/.amcatrc3. Example file:
-# 
+#
 # [db-default]
 # name=amcat
 # engine=django.db.backends.postgresql_psycopg2
@@ -52,19 +58,19 @@ INSTALLED_APPS = ('amcat', )
 def sections(identifier):
     c = configparser.ConfigParser()
     c.readfp(file(os.path.expanduser('~/.amcatrc3')))
-    
+
     for sect in c.sections():
-        db = sect.split('-')        
+        db = sect.split('-')
         if db[0] == identifier and len(db) is 2:
             yield db[1], c.items(sect)
-            
+
 def filldict(vals, dic):
     for id, opts in vals:
         dic[id] = {}
         for k,v in opts:
             dic[id][k.upper()] = v
     return dic
-   
+
 DATABASES = filldict(sections('db'), dict())
 if os.environ.get("DJANGO_DB_ENGINE"):
     DATABASES["default"]["ENGINE"] = os.environ.get("DJANGO_DB_ENGINE")

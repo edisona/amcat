@@ -70,19 +70,23 @@ def _get_next_id():
 
 def create_test_user(**kargs):
     """Create a user to be used in unit testing"""
-    from amcat.models.user import Affiliation, User#, Language
+    from amcat.models.user import Affiliation, User, create_user
     if 'affiliation' not in kargs:
         kargs['affiliation'] = Affiliation.objects.create()
     if 'username' not in kargs:
         kargs['username'] = "testuser_%i" % User.objects.count()
     if 'email' not in kargs:
         kargs['email'] = "testuser_%i@example.com" % User.objects.count()
-    if 'fullname' not in kargs:
-        kargs['fullname'] = kargs['username']
-    # if 'language' not in kargs:
-        # kargs['language'] = Language.objects.all()[0]
-    if "id" not in kargs: kargs["id"] = _get_next_id()
-    return User.objects.create(**kargs)
+    if 'first_name' not in kargs:
+        kargs['first_name'] = kargs['username']
+    if 'last_name' not in kargs:
+        kargs['last_name'] = kargs['username']
+    if 'language' not in kargs:
+        kargs['language'] = get_test_language()
+    if 'role' not in kargs:
+        kargs['role'] = get_test_role()
+    #if "id" not in kargs: kargs["id"] = _get_next_id()
+    return create_user(**kargs)
     #return User.create_user(**kargs)
 
 def create_test_project(**kargs):
@@ -103,6 +107,11 @@ def get_test_language(**kargs):
     from amcat.models.language import Language
     from amcat.tools import djangotoolkit
     return djangotoolkit.get_or_create(Language, label='en')
+
+def get_test_role(**kargs):
+    from amcat.models import Role
+    from amcat.tools import djangotoolkit
+    return djangotoolkit.get_or_create(Role, label='admin', projectlevel=False)
 
 def create_test_medium(**kargs):
     from amcat.models.medium import Medium
@@ -140,9 +149,12 @@ def create_test_set(articles=0, **kargs):
     if "project" not in kargs: kargs["project"] = create_test_project()
     if "id" not in kargs: kargs["id"] = _get_next_id()
     s = ArticleSet.objects.create(**kargs)
-    if articles:
+    if type(articles) == int: 
         for _x in range(int(articles)):
             s.add(create_test_article())
+    elif articles:
+        for article in articles:
+            s.add(article)
     return s
             
 
@@ -216,6 +228,15 @@ def create_test_analysis_sentence(analysis_article=None, **kargs):
     if 'sentence' not in kargs: kargs['sentence'] = create_test_sentence(article=analysis_article.article)
     return AnalysisSentence.objects.create(analysis_article=analysis_article, **kargs)
 
+
+def create_test_token(**kargs):
+    from amcat.models import Pos, Token
+    if "sentence" not in kargs: kargs['sentence'] = create_test_analysis_sentence()
+    if "word" not in kargs: kargs["word"] = create_test_word()
+    if "pos" not in kargs: kargs["pos"] = Pos.objects.create(major="x", minor="y", pos="p")
+    if "position" not in kargs: kargs["position"] = get_next_id()
+    return Token.objects.create(**kargs)
+
 def create_tokenvalue(analysis_article=None, **kargs):
     if 'analysis_sentence' not in kargs:
         kargs['analysis_sentence'] = create_test_analysis_sentence(analysis_article).id
@@ -252,11 +273,11 @@ class PolicyTestCase(TestCase):
         clear_codebook_cache()
 
         # Make sure that current_user() exists
-        try:
-            from amcat.models.user import current_user, current_username, User
-            current_user()
-        except User.DoesNotExist:
-            create_test_user(username = current_username())
+        #try:
+        #    from amcat.models.user import current_user, current_username, User
+        #    current_user()
+        #except User.DoesNotExist:
+        #    create_test_user(username = current_username())
         
         super(PolicyTestCase, self).setUp()
     

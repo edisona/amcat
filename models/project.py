@@ -20,6 +20,7 @@
 """ORM Module representing projects"""
 
 from __future__ import unicode_literals, print_function, absolute_import
+from django.contrib.auth.models import User
 
 from amcat.tools.model import AmcatModel
 from amcat.models.coding.codebook import Codebook
@@ -27,10 +28,10 @@ from amcat.models.coding.codingschema import CodingSchema
 
 from amcat.models.article import Article
 from amcat.models.articleset import ArticleSetArticle
-from amcat.models.user import current_user
 
 from django.db import models
 from django.db.models import Q
+
 
 ROLEID_PROJECT_READER = 11
 
@@ -51,9 +52,9 @@ class Project(AmcatModel):
     description = models.CharField(max_length=200, null=True)
 
     insert_date = models.DateTimeField(db_column='insertdate', auto_now_add=True)
-    owner = models.ForeignKey("amcat.User", db_column='owner_id')
+    owner = models.ForeignKey(User, db_column='owner_id')
 
-    insert_user = models.ForeignKey("amcat.User", db_column='insertuser_id',
+    insert_user = models.ForeignKey(User, db_column='insertuser_id',
                                     related_name='inserted_project',
                                     editable=False)
 
@@ -80,7 +81,8 @@ class Project(AmcatModel):
         return Codebook.objects.filter(Q(projects_set=self)|Q(project=self))
     
     def can_read(self, user):
-        return (self in user.projects or user.haspriv('view_all_projects'))
+        print([self, user.username, user.get_profile().projects, user.get_profile().haspriv('view_all_projects')])
+        return self in user.get_profile().projects or user.get_profile().haspriv('view_all_projects')
 
     @property
     def users(self):
@@ -100,10 +102,18 @@ class Project(AmcatModel):
     class Meta():
         db_table = 'projects'
         app_label = 'amcat'
+        ordering = ('name',)
 
     def save(self, *args, **kargs):
         if self.insert_user_id is None:
-            self.insert_user = current_user()
+            # Import at top causes a circular import, unfortunately
+            from amcatnavigator.utils.auth import get_request
+
+            # No insert user is set, try to retrieve it
+            req = get_request()
+            if req is not None:
+                self.insert_user_id = req.user.id
+
         super(Project, self).save(*args, **kargs)
 
 ###########################################################################

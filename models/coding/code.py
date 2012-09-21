@@ -99,6 +99,7 @@ class Code(AmcatModel):
                 return self._get_label(language=lan)
             except Label.DoesNotExist:
                 pass
+
         fallback = kargs.get("fallback", True)
         if fallback:
             try:
@@ -132,11 +133,11 @@ class Label(AmcatModel):
     code = models.ForeignKey(Code, db_index=True, related_name="labels")
     language = models.ForeignKey(Language, db_index=True, related_name="+")
 
-
     class Meta():
         db_table = 'codes_labels'
         app_label = 'amcat'
         unique_together = ('code','language')
+        ordering = ("language__id",)
 
 
 ###########################################################################
@@ -165,6 +166,7 @@ class TestCode(amcattest.PolicyTestCase):
 
         # does .label return something sensible on objects without labels?
         o2 = Code.objects.create()
+        self.assertIsInstance(o2.label, unicode)
         self.assertRegexpMatches(o2.label, r'^<Code: \d+>$')
         self.assertIsNone(o2.get_label(l2))
 

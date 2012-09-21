@@ -20,17 +20,22 @@
 """ORM Module representing users"""
 
 from __future__ import print_function, absolute_import
-import logging; log = logging.getLogger(__name__)
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from amcat.models.language import Language
+from amcat.models.authorisation import Role
+from amcat.models import authorisation as auth
+from amcat.models.project import Project
+
+import logging;
+from amcat.tools.caching import RowCacheManager
+
+log = logging.getLogger(__name__)
+
 import string, random
 
-from amcat.models.language import Language
-from amcat.models import authorisation as auth
-
-from django.db import models, DEFAULT_DB_ALIAS, connections
-
+from django.db import models
 from amcat.tools.model import AmcatModel
-
-from amcat.tools import dbtoolkit
 
 
 class Affiliation(AmcatModel):
@@ -45,82 +50,27 @@ class Affiliation(AmcatModel):
 
     class Meta():
         db_table = 'affiliations'
-        ordering = ['name']
+        ordering = ('name',)
         app_label = 'amcat'
 
     def can_update(self, user):
         return user.haspriv('manage_users')
 
-class User(AmcatModel):
+class UserProfile(AmcatModel):
     """
-    Model for table users. Every registered AmCAT user has one entry in the users table
+    Additional user information is stored here
     """
-    __label__ = 'username'
+    user = models.OneToOneField(User)
 
-    id = models.AutoField(primary_key=True, db_column='user_id', editable=False)
-
-    username = models.SlugField(max_length=50, unique=True, editable=False,
-                                help_text="Only letters, digits and underscores are allowed.",
-                                db_index=True)
-
-    fullname = models.CharField(max_length=100, verbose_name="Full name")
-    active = models.BooleanField(default=True)
-    email = models.EmailField(max_length=100, unique=True)
-
-    affiliation = models.ForeignKey(Affiliation)
+    affiliation = models.ForeignKey(Affiliation, default=1)
     language = models.ForeignKey(Language, default=1)
-    role = models.ForeignKey(auth.Role, null=False, default=0)
+    role = models.ForeignKey(Role, default=0)
 
-    def delete(self, **kwargs):
-        self.active = False
-        super(User, self).save(**kwargs)
-
-    class Meta():
-        db_table = 'users'
-        ordering = ['username']
-        app_label = 'amcat'
+    objects = RowCacheManager()
 
     @property
     def projects(self):
-        """Return a sequence of all projects the current user has a role in"""
-        return Project.objects.filter(projectrole__user=self)
-
-    ### Auth ###
-    def can_read(self, user):
-        return (user == self or
-                user.haspriv('view_users') or
-                (user.affiliation == self.affiliation and
-                 user.haspriv('view_users_same_affiliation')))
-
-    def can_update(self, user):
-        return (user == self or
-                user.haspriv('manage_users') or
-                (user.affiliation == self.affiliation and
-                 user.haspriv('manage_users_same_affiliation')))
-
-    @classmethod
-    def can_create(cls, user):
-        return user.haspriv('manage_users')
-
-    ### Mimic Django-functions ###
-    def set_password(self, raw_password):
-        """Set the users password to raw_password"""
-        if raw_password is None:
-            self.active = False
-        else:
-            dbtoolkit.get_database().set_password(self.username, raw_password)
-
-    def check_password(self, raw_password):
-        """Returns True iff the raw_password is correct for this user"""
-        return dbtoolkit.get_database().check_password(self.username, raw_password)
-
-    def is_authenticated(self):
-        """Returns True iff the current user is authenticated"""
-        return True if hasattr(self, 'db') else False
-
-    def has_perm(self, perm):
-        """Returns True iff this user has this perm(ission)"""
-        return self.haspriv(perm)
+        return Project.objects.filter(projectrole__user=self.user)
 
     def haspriv(self, privilege, onproject=None):
         """
@@ -131,64 +81,79 @@ class User(AmcatModel):
 
         @return: True or False
         """
-        try: auth.check(self, privilege, onproject)
+        try: auth.check(self.user, privilege, onproject)
         except auth.AccessDenied:
             return False
         return True
 
-    @property
-    def is_superuser(self):
-        """Returns True iff the current user is admin"""
-        return (self.role.id >= auth.ADMIN_ROLE)
+    def can_read(self, user):
+        profile = user.get_profile()
 
-def current_username(using=DEFAULT_DB_ALIAS):
-    return connections.databases[using]['USER']
+        return (self == profile) or\
+               (profile.affiliation == self.affiliation and\
+                profile.haspriv("view_users_same_affiliation")) or\
+               (profile.haspriv("view_all_users"))
 
-def current_user(using=DEFAULT_DB_ALIAS):
-    """Return the current user from the configured db"""
-    return User.objects.get(username=current_username(using))
+    def can_update(self, user):
+        profile = user.get_profile()
 
+        return (self == profile) or\
+               (profile.affiliation == self.affiliation and\
+                profile.haspriv("manage_users_same_affiliation")) or\
+               (profile.haspriv("manage_users"))
 
+    def can_delete(self, user):
+        return False
+        
 
-def create_user(username, fullname, email, affiliation, language, role=None,
-                password=None, using=DEFAULT_DB_ALIAS, insert_if_db_user_exists=False):
+    class Meta():
+        db_table = 'auth_user_profile'
+        app_label = "amcat"
+
+def create_user(username, first_name, last_name, email, affiliation, language, role,
+                password=None):
         """
         Create a user with the given attributes, creating both the db user and
-        the entry in the users table
+        the entry in the users table.
 
         @param password: use the given password, or a random password if None
-        @param insert_if_db_user_exists: create the User object even if the user already
-                                         exists as a database user
         @return: A User object with the .password field set.
-                 If the db user already existed, .password will be None
+                 If the db user already existed, full_clean will raise an error
         """
         # create and validate the User object before creating the db user
         fields = dict((k, v) for (k,v) in locals().items()
-                  if k in ["username","fullname","email","affiliation","language", "role"])
-        u = User(**fields)
-        u.full_clean()
+                  if k in ("username","first_name", "last_name", "email"))
 
-        if not password: password = _random_password()
-        try:
-            dbtoolkit.get_database(using=using).create_user(username, password)
-        except dbtoolkit.UserAlreadyExists:
-            if not insert_if_db_user_exists: raise
-            password = None
+        # Create user
+        password = password or _random_password()
 
-        # Create Django user and return with .password
+        u = User.objects.create_user(username, email, password)
+        u.first_name = first_name
+        u.last_name = last_name
         u.save()
-        u.password = password
+
+        # Correct profile
+        prof = u.get_profile()
+        prof.role = role
+        prof.affiliation = affiliation
+        prof.language = language
+        prof.save()
+
         return u
+
+
+def create_user_profile(sender, instance, created, **kwargs):
+    """
+    This function is executed when a Django User model is created.
+    """
+    if created:
+        UserProfile.objects.create(user=instance)
+
+post_save.connect(create_user_profile, sender=User)
 
 def _random_password(length=8, chars=string.letters + string.digits):
     #http://code.activestate.com/recipes/59873/
     return ''.join([random.choice(chars) for i in range(length)])
-
-# late import to avoid cycles
-from amcat.models.project import Project
-
-if __name__ == '__main__':
-    print(current_user().fullname)
 
 ###########################################################################
 #                          U N I T   T E S T S                            #
@@ -201,6 +166,3 @@ class TestUser(amcattest.PolicyTestCase):
         """Test whether we can create a user"""
         u = amcattest.create_test_user()
         self.assertIsNotNone(u)
-
-    def test_current_user(self):
-        u = get_current_user()

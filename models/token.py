@@ -23,7 +23,7 @@ from django.db import models
 from collections import namedtuple
 
 TripleValues = namedtuple("TripleValues", ["analysis_sentence", "child", "parent", "relation"])
-TokenValues = namedtuple("TokenValues", ["analysis_sentence", "position", "word", "lemma", "pos", "major", "minor"])
+TokenValues = namedtuple("TokenValues", ["analysis_sentence", "position", "word", "lemma", "pos", "major", "minor", "namedentity"])
 
 class Pos(AmcatModel):
     id = models.AutoField(primary_key=True, db_column='pos_id')
@@ -44,6 +44,7 @@ class Token(AmcatModel):
     word = models.ForeignKey(Word)
     position = models.IntegerField()
     pos = models.ForeignKey(Pos, related_name="+")
+    namedentity = models.CharField(max_length=1, null=True, blank=True)
 
     class Meta():
         db_table = 'tokens'
@@ -53,7 +54,7 @@ class Token(AmcatModel):
         
     def __unicode__(self):
         return unicode(self.word)
-    
+
 class Relation(AmcatModel):
     id = models.AutoField(db_column='relation_id', primary_key=True)
     label = models.CharField(max_length=100)
@@ -75,6 +76,15 @@ class Triple(AmcatModel):
         unique_together = ('parent', 'child')
 
 
+class CoreferenceSet(AmcatModel):
+    id = models.AutoField(primary_key=True, db_column='coreference_set_id')
+    analysis_article = models.ForeignKey("amcat.AnalysisArticle", related_name='coreferencesets')
+    tokens = models.ManyToManyField(Token, related_name='coreferencesets')
+
+    class Meta():
+        db_table = 'coreferencesets'
+        app_label = 'amcat'
+
 ###########################################################################
 #                          U N I T   T E S T S                            #
 ###########################################################################
@@ -84,13 +94,9 @@ from amcat.tools import amcattest
 class TestTokens(amcattest.PolicyTestCase):
     def test_get_tokens_order(self):
         s = amcattest.create_test_analysis_sentence()
-        w1, w2, w3 = [amcattest.create_test_word(word=x) for x in "abc"]
-        pos = Pos.objects.create(major="x", minor="y", pos="p")
-        t1 = Token.objects.create(sentence=s, position=3, word=w3, pos=pos)
-        t2 = Token.objects.create(sentence=s, position=1, word=w2, pos=pos)
-        t3 = Token.objects.create(sentence=s, position=2, word=w1, pos=pos)
+        t1,t2,t3 = [amcattest.create_test_token(sentence=s, position=i) for i in [2,1,3]]
 
-        self.assertEqual(list(s.tokens.all()), [t2,t3,t1])
+        self.assertEqual(list(s.tokens.all()), [t2,t1,t3])
 
     def test_get_analysis(self):
         from amcat.nlp.frog import Frog

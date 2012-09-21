@@ -27,7 +27,7 @@ import logging; log = logging.getLogger(__name__)
 from django import forms
 
 from amcat.scripts.script import Script
-from amcat.models.user import User, current_user
+from amcat.models.user import User
 from amcat.models.project import Project
 from amcat.models.authorisation import Role, ProjectRole
 
@@ -38,13 +38,16 @@ class AddProjectForm(forms.ModelForm):
     guest_role = forms.ModelChoiceField(queryset=Role.objects.filter(projectlevel=True),
                                         required=False, help_text="Leaving this value "+
                                         "empty means it will not be readable by guests.",
-                                        initial=PROJECT_ROLE_READER)
+                                       initial=PROJECT_ROLE_READER)
+    insert_user = forms.ModelChoiceField(queryset=User.objects.all(), required=False)
 
     @classmethod
     def get_empty(cls, user=None, **_options):
         obj = cls()
-        if user is None: user = current_user()
-        obj.fields['owner'].initial = user.id
+        try:
+            obj.fields['owner'].initial = user.id
+        except AttributeError: #no user
+            pass
         return obj
 
     class Meta:
@@ -60,7 +63,6 @@ class AddProject(Script):
 
     def run(self, _input=None):
         p = Project.objects.create(**self.options)
-
         # Add user to project (as admin)
         pr = ProjectRole(project=p, user=self.options['owner'])
         pr.role = Role.objects.get(projectlevel=True, label='admin')
@@ -82,15 +84,14 @@ from amcat.tools import amcattest
 class TestAddProject(amcattest.PolicyTestCase):
     def test_add(self):
         u = amcattest.create_test_user()
-        p = AddProject(owner=u.id, name='test', description='test').run()
-        self.assertEqual(p.insert_user, current_user())
+        p = AddProject(owner=u.id, name='test', description='test',insert_user=u.id).run()
+        #self.assertEqual(p.insert_user, current_user()) # current_user() doesn't exist anymore
         self.assertEqual(p.owner, u)
 
     def test_get_form(self):
-        from amcat.models.user import current_user
         u = amcattest.create_test_user()
-        f = AddProject.get_empty_form()
-        self.assertEqual(f.fields['owner'].initial, current_user().id)
+        #f = AddProject.get_empty_form()
+        #self.assertEqual(f.fields['owner'].initial, current_user().id) # current_user() doesn't exist anymore
 
         f = AddProject.get_empty_form(user=u)
         self.assertEqual(f.fields['owner'].initial, u.id)

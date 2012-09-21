@@ -26,17 +26,20 @@ check(db, privilege/str/int) checks whether user has privilege
 getPrivilege(db, str or int) returns Privilege object
 
 """
+from django.contrib.auth.models import User
 
 from django.db import models
 from amcat.tools.model import AmcatModel
 
 ADMIN_ROLE = 3
 
+from amcat.tools.caching import RowCacheManager
+
 class AccessDenied(EnvironmentError):
     def __init__(self, user, privilege, project=None):
         projectstr = " on %s" % project if project else ""
         msg = "Access denied for privilege %s%s to %s\nRequired role %s, has role %s" % (
-            privilege, projectstr, user, privilege.role, user.role)
+            privilege, projectstr, user, privilege.role, user.get_profile().role)
         EnvironmentError.__init__(self, msg)
 
 def check(user, privilege, project=None):
@@ -64,7 +67,7 @@ def check(user, privilege, project=None):
 
         try:
             role = (Role.objects.get(projectrole__user=user, projectrole__project=project)
-                    if privilege.role.projectlevel else user.role)
+                    if privilege.role.projectlevel else user.get_profile().role)
         except Role.DoesNotExist:
             # User has no role on this project!
             raise AccessDenied(user, privilege, project)
@@ -73,20 +76,24 @@ def check(user, privilege, project=None):
         if role.id < nrole.id:
             raise AccessDenied(user, privilege, project)
 
-
 class Role(AmcatModel):
     id = models.AutoField(primary_key=True, db_column='role_id')
     label = models.CharField(max_length=50)
     projectlevel = models.BooleanField()
 
+    objects = RowCacheManager()
+
     class Meta():
         db_table = 'roles'
         app_label = 'amcat'
+        unique_together = ("label", "projectlevel")
 
 class ProjectRole(AmcatModel):
     project = models.ForeignKey("amcat.Project", db_index=True)
-    user = models.ForeignKey("amcat.User", db_index=True)
+    user = models.ForeignKey(User, db_index=True)
     role = models.ForeignKey(Role)
+
+    objects = RowCacheManager()
 
     def __unicode__(self):
         return u"%s, %s" % (self.project, self.role)
@@ -97,16 +104,18 @@ class ProjectRole(AmcatModel):
         app_label = 'amcat'
 
     def can_update(self, user):
-        return user.haspriv('manage_project_users', self.project)
+        return user.get_profile().haspriv('manage_project_users', self.project)
 
     def can_delete(self, user):
-        return user.haspriv('manage_project_users', self.project)
+        return user.get_profile().haspriv('manage_project_users', self.project)
 
 class Privilege(AmcatModel):
     id = models.AutoField(primary_key=True, db_column='privilege_id')
 
     label = models.CharField(max_length=50)
     role = models.ForeignKey(Role)
+
+    objects = RowCacheManager()
 
     class Meta():
         db_table = 'privileges'

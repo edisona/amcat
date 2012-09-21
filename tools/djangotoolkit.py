@@ -44,9 +44,9 @@ def get_related(appmodel):
             if isinstance(field, ManyToManyField) and getattr(field, 'creates_table', False):
                 yield field.related.parent_model
 
-def get_all_related(models):
+def get_all_related(modelclasses):
     """Get all related model classes from the given model classes"""
-    for m in models:
+    for m in modelclasses:
         for m2 in get_related(m):
             yield m2
 
@@ -63,13 +63,13 @@ def get_related_models(modelnames, stoplist=set(), applabel='amcat'):
     @param stoplist: models whose children we don't care about
     @return: sequence of model classes
     """
-    models = set([models.get_model(applabel, modelname) for modelname in modelnames])
+    _models = set([models.get_model(applabel, modelname) for modelname in modelnames])
     stops = set([models.get_model(applabel, stop) for stop in stoplist])
     while True:
-        related = set(get_all_related(models - stops)) # seed from non-stop models
-        new = related - models
-        if not new: return models
-        models |= new
+        related = set(get_all_related(_models - stops)) # seed from non-stop models
+        new = related - _models 
+        if not new: return _models
+        _models |= new
 
 
 def get_or_create(model_class, **attributes):
@@ -207,7 +207,6 @@ class TestDjangoToolkit(amcattest.PolicyTestCase):
         """Test get_related_models function. Note: depends on the actual amcat.models"""
 
         for start, stoplist, result in [
-            (('Project',), (), ['Affiliation', 'Language', 'Project', 'Role', 'User']),
             (('Sentence',), ('Project',), ['Article', 'Language', 'Medium', 'Project', 'Sentence']),
             ]:
 

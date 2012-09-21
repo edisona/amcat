@@ -29,6 +29,7 @@ class SOHServer(object):
         url = "{self.url}/data?default".format(**locals())
         if isinstance(rdf, rdflib.Graph):
             rdf = rdf.serialize(format="turtle")
+            #print rdf
         r = self.session.request(method, url, headers={'Content-Type' : format}, data=rdf, prefetch=True)
         if r.status_code != 204:
             raise Exception(r.text)
@@ -66,7 +67,7 @@ class SOHServer(object):
                  """.format(**locals())
         self.do_update(sparql)
 
-    def query(self, select, where, orderby=None, prefixes=None):
+    def query(self, select, where, orderby=None, prefixes=None, format='csv', parse=True):
         prefixes=self._prefix_string(prefixes)
         if isinstance(select, (list, tuple)): select = " ".join(select)
         sparql = """{prefixes}
@@ -76,4 +77,4 @@ class SOHServer(object):
         if orderby:
             if isinstance(orderby, (list, tuple)): orderby = " ".join(orderby)
             sparql += "ORDER BY {orderby}".format(**locals())
-        return self.do_query(sparql, format="csv", parse=True)
+        return self.do_query(sparql, format=format, parse=parse)

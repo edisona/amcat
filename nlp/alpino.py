@@ -21,6 +21,8 @@
 Preprocess using Alpino
 See http://www.let.rug.nl/vannoord/alp/Alpino/
 """
+#TODO: should use Parser superclass and remove HOME code
+
 import os
 from os.path import exists
 
@@ -41,7 +43,6 @@ CMD = "ALPINO_HOME={alpino_home} {alpino_home}/bin/Alpino {alpino_options}"
 TOKENIZE = "{alpino_home}/Tokenization/tok"
 ALPINO_HOME="/home/amcat/resources/Alpino"
 ALPINO_OPTIONS = "end_hook=dependencies -parse"
-
 class AlpinoConfigurationError(Exception): pass
 class AlpinoError(EnvironmentError): pass
 

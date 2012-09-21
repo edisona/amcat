@@ -64,7 +64,7 @@ class Plugin(AmcatModel):
 
     @classmethod
     def can_create(cls, user):
-        return user.haspriv('add_plugins')
+        return user.get_profile().haspriv('add_plugins')
 
 
 class PluginType(AmcatModel):
@@ -187,6 +187,7 @@ class TestPlugin(amcattest.PolicyTestCase):
         """Are only admins allowed to create new plugins??"""
         from amcat.models.authorisation import Role
         u = amcattest.create_test_user()
+        u.role = Role.objects.get(label="reader", projectlevel=False)
         self.assertFalse(Plugin.can_create(u))
         u.role = Role.objects.get(label="admin", projectlevel=False)
         u.save()

@@ -31,7 +31,10 @@ from amcat.models.medium import Medium
 
 from django.db import models
 
-import logging; log = logging.getLogger(__name__)
+import logging;
+from amcat.tools.caching import RowCacheManager
+
+log = logging.getLogger(__name__)
 
 import re
 
@@ -56,11 +59,11 @@ class Article(AmcatModel):
     date = models.DateTimeField(db_index=True)
     section = models.CharField(blank=True, null=True, max_length=500)
     pagenr = models.IntegerField(blank=True, null=True)
-    headline = models.TextField(db_index=True)
+    headline = models.TextField()
     byline = models.TextField(blank=True, null=True)
     length = models.IntegerField()
     metastring = models.TextField(null=True)
-    url = models.URLField(null=True, blank=True, db_index=True, max_length=1000)
+    url = models.URLField(null=True, blank=True, db_index=True, max_length=750)
     externalid = models.IntegerField(blank=True, null=True)
     author = models.TextField(blank=True, null=True, max_length=100)
 
@@ -72,6 +75,8 @@ class Article(AmcatModel):
                                db_index=True, blank=True)
     project = models.ForeignKey("amcat.Project", db_index=True, related_name="articles")
     medium = models.ForeignKey(Medium, db_index=True)
+
+    objects = RowCacheManager()
 
     class Meta():
         db_table = 'articles'
@@ -112,7 +117,7 @@ class Article(AmcatModel):
             return True
 
         # Check users role on project
-        if user.projectrole_set.filter(project__set__article=self, role__id__gt=read_meta.id):
+        if user.projectrole_set.filter(project__articles__article=self, role__id__gt=read_meta.id):
             return True
 
         return False

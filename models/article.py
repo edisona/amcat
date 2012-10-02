@@ -1,8 +1,6 @@
 ###########################################################################
 #          (C) Vrije Universiteit, Amsterdam (the Netherlands)            #
-#                                                                         #
-# This file is part of AmCAT - The Amsterdam Content Analysis Toolkit     #
-#                                                                         #
+
 # AmCAT is free software: you can redistribute it and/or modify it under  #
 # the terms of the GNU Affero General Public License as published by the  #
 # Free Software Foundation, either version 3 of the License, or (at your  #
@@ -31,7 +29,7 @@ from amcat.models.medium import Medium
 
 from django.db import models
 
-import logging;
+import logging
 from amcat.tools.caching import RowCacheManager
 
 log = logging.getLogger(__name__)
@@ -147,3 +145,4 @@ class TestArticle(amcattest.PolicyTestCase):
             a = amcattest.create_test_article(headline=s)
             self.assertIsInstance(a.headline, unicode)
             self.assertEqual(a.headline, s)
+            self.assertEqual(a.headline, "pietje")

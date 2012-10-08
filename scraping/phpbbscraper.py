@@ -22,10 +22,10 @@ A Scraper for the most common internet forum.
 """
 
 from amcat.scraping.document import HTMLDocument
-from amcat.scraping.scraper import HTTPScraper
+from amcat.scraping.scraper import HTTPScraper,DatedScraper
 from urlparse import urljoin, urlunsplit, parse_qs, urlsplit
 from urllib import urlencode
-
+from lxml import etree
 from amcat.tools import toolkit
 
 class PhpBBScraper(HTTPScraper):
@@ -50,12 +50,11 @@ class PhpBBScraper(HTTPScraper):
         for cat_title, cat_doc in self.get_categories(index):
             for page in self.get_pages(cat_doc):
                 for fbg in page.cssselect('.forumbg'):
-                    if 'announcement' in fbg.get('class'):
-                        continue
-
-                    for a in fbg.cssselect('.topics > li a.topictitle'):
-                        url = urljoin(self.index_url, a.get('href'))
-                        yield HTMLDocument(headline=a.text, url=url, category=cat_title)
+                    for li in fbg.cssselect('.topics > li'):
+                        url = urljoin(self.index_url, li.cssselect("a.topictitle")[0].get('href'))
+                        _date = etree.tostring(li.cssselect("dd.lastpost")[0]).split("br />")[1]
+                        date = toolkit.readDate(_date)
+                        yield {'date':date, 'object':HTMLDocument(headline=li.cssselect("a.topictitle")[0].text, url=url, category=cat_title)}
 
     def get_pages(self, page):
         """Get each page specified in pagination division."""
@@ -98,6 +97,7 @@ class PhpBBScraper(HTTPScraper):
             yield href.text, self.getdoc(url)
     
     def _scrape_unit(self, thread):
+        thread = thread['object']
         fipo = True # First post
         thread.doc = self.getdoc(thread.props.url)
         for page in self.get_pages(thread.doc):
@@ -106,23 +106,36 @@ class PhpBBScraper(HTTPScraper):
                 ca.props.date = toolkit.readDate(post.cssselect('.author')[0].text_content()[-22:])
                 ca.props.text = post.cssselect('.content')
                 
-                title = post.cssselect('.postbody h3 a')[0].text
+                title = unicode(post.cssselect('.postbody h3 a')[0].text)
                 if fipo:
                     optitle = title
                 if title:
                     ca.props.headline = title
                 else:
-                    ca.props.headline = 're: {}'.format( optitle )
+                    ca.props.headline = 'Re: {}'.format( optitle )
 
                 try:
-                    ca.props.author = post.cssselect('.author strong')[0].text_content()
+                    ca.props.author = unicode(post.cssselect('.author strong')[0].text_content())
                 except:
                     try:
-                        ca.props.author = post.cssselect('.author a')[0].text_content()
+                        ca.props.author = unicode(post.cssselect('.author a')[0].text_content())
                     except:
                         # Least reliable method
-                        ca.props.author = post.cssselect('.author')[0].text_content().split()[0]
+                        ca.props.author = unicode(post.cssselect('.author')[0].text_content().split()[0])
 
                 yield ca
 
                 fipo = False
+
+
+
+class DatedPhpBBScraper(PhpBBScraper, DatedScraper):
+    def _scrape_unit(self, thread):
+        for ca in super(DatedPhpBBScraper,self)._scrape_unit(thread):
+            if ca.props.date.date() == self.options['date']:        
+                yield ca
+    def _get_units(self):
+        for unit in super(DatedPhpBBScraper, self)._get_units():
+            if unit['date'].date() == self.options['date']:
+                yield unit
+            

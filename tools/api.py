@@ -26,6 +26,7 @@ import requests
 import logging
 from collections import namedtuple
 import itertools
+import json
 
 from amcat.tools.toolkit import csvreader
 from amcat.tools import classtools
@@ -34,7 +35,7 @@ log = logging.getLogger(__name__)
 
 class API(object):
 
-    def __init__(self, base_uri, username=None, password=None, requests=requests):
+    def __init__(self, base_uri, username=None, password=None, client=requests):
         """
         @param requests: module to use for http requests, useful for unit testing
         """
@@ -47,7 +48,7 @@ class API(object):
         else:
             self.username = username
             self.password = password
-        self.requests = requests
+        self.client = client
 
     def get_object(self, klass, pk):
         objects = list(self.get_objects(klass, pk=pk))
@@ -66,10 +67,12 @@ class API(object):
             uri = ("{self.base_uri}/api/v4/{klass}?format=json&limit={batch_size}&page={page}"
                    .format(**locals()))
 
-            r = self.requests.get(uri, params=filters, auth=(self.username, self.password))
+            
+            r = self.client.get(uri, params=filters, auth=(self.username, self.password))
 
             _check_status(r)
-            o = json.loads(r.text)
+            
+            o = json.loads(_get_content(r))
             if o['total'] == 0: return
 
             if return_type is None:
@@ -85,11 +88,17 @@ class API(object):
         uri = '{self.base_uri}/api/action/{action}'.format(**locals())
         log.debug("Posting action {uri} with data {kargs}".format(**locals()))
 
-        r = self.requests.post(uri, data=kargs, auth=(self.username, self.password))
+        r = self.client.post(uri, data=kargs, auth=(self.username, self.password))
         _check_status(r)
-        return json.loads(r.text)
+        return json.loads(_get_content(r))
 
-
+def _get_content(response):
+    result = response.text
+    if not result:
+        result = response.content
+        if result:
+            result = result.decode(response.encoding or "utf-8")
+    return result
 
 def _check_status(response):
     """Check whether the response is 2xx (http success), Exception otherwise"""
@@ -110,20 +119,5 @@ def _check_status(response):
 #                          U N I T   T E S T S                            #
 ###########################################################################
 
-from amcat.tools import amcattest
-
-
-import json
-
-from django.test import TestCase
-from django.test.client import Client
-from django.contrib.auth.models import User
-
-
-class TestAPI(amcattest.PolicyTestCase):
-    def test_get_objects_local(self):
-        from amcat.models import Article
-        d = DirectAPI()
-        a = amcattest.create_test_article()
-
+# see amcatnavigator.api.tests.test_api_module
 

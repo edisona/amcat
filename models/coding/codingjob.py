@@ -132,7 +132,7 @@ class TestCodingJob(amcattest.PolicyTestCase):
         c2 = amcattest.create_test_coding(codingjob=job)
         c2.update_values({intf:-1, codef: code})
         t = job.values_table()
-        self.assertEqual(set(t.to_list()), {('bla', 1, None), (None, -1, code)})
+        self.assertEqual(set(t.to_list()), {('bla', 1, None), (None, -1, code.id)})
         self.assertEqual(set(t.rows), {c, c2})
 
     def test_nqueries(self):

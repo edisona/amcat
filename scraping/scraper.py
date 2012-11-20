@@ -40,6 +40,7 @@ from amcat.scraping.htmltools import HTTPOpener
 from amcat.scraping.document import Document
 
 from amcat.tools.toolkit import retry
+from django.db import transaction
 
 import logging; log = logging.getLogger(__name__)
 import traceback
@@ -55,15 +56,10 @@ class ScraperForm(forms.Form):
 
     def clean_articleset_name(self):
         name = self.cleaned_data['articleset_name']
-        if not name: return
-        if self.cleaned_data['articleset']:
-            raise forms.ValidationError("Cannot specify both articleset and articleset_name")
-
-        project = self.cleaned_data['project']
-        s = ArticleSet.objects.create(project=project, name=name)
-        self.cleaned_data['articleset'] = s
-
-
+        if not bool(name) ^ bool(self.cleaned_data['articleset']):
+            raise forms.ValidationError("Please specify either articleset or articleset_name")
+        return name
+    
     @classmethod
     def get_empty(cls, project=None, **_options):
         f = cls()
@@ -86,15 +82,25 @@ class Scraper(Script):
         super(Scraper, self).__init__(*args, **kargs)
         self.medium = get_or_create_medium(self.medium_name)
         self.project = self.options['project']
-        self.articleset = self.options['articleset']
         log.debug("Articleset: {self.articleset}, options: {self.options}"
                   .format(**locals()))
 
+    @property
+    def articleset(self):
+        if self.options['articleset']:
+            return self.options['articleset']
+        if self.options['articleset_name']:
+            aset = ArticleSet.objects.create(project=self.project, name=self.options['articleset_name'])
+            self.options['articleset'] = aset
+            return set
+        return
+        
     def run(self, input):
         log.info("Scraping {self.__class__.__name__} into {self.project}, medium {self.medium}"
                  .format(**locals()))
         from amcat.scraping.controller import SimpleController
-        SimpleController(self.articleset).scrape(self)
+        with transaction.commit_on_success():
+            SimpleController(self.articleset).scrape(self)
 
     def get_units(self):
         """
@@ -127,6 +133,7 @@ class Scraper(Script):
         for article in self._scrape_unit(unit):
             article = self._postprocess_article(article)
             log.debug(".. yields article %s" % article)
+            article.scraper = self
             yield article
 
 
@@ -318,15 +325,31 @@ class MultiScraper(object):
 
     def __init__(self, scrapers):
         """@param scrapers: instantiated Scraper objects ('Ready to start scraping') """
+        log.info("initializing multiscraper with {} scrapers".format(len(scrapers)))
         self.scrapers = scrapers
         self.errors = {}
 
     def get_units(self):
+        log.info("Scraping {} scrapers".format(len(self.scrapers)))
         for scraper in self.scrapers:
             log.info("Starting scraping for {scraper}".format(**locals()))
-            for u in scraper.get_units():
-                yield (scraper, u)
-
+            try:
+                units = scraper.get_units()
+            except Exception as e:
+                yield ((scraper,None),e)
+                continue
+            
+            while True:
+                try:
+                    u = units.next()
+                except StopIteration:
+                    break
+                except Exception as e:
+                    yield ((scraper,None),e)
+                else:
+                    yield ((scraper,u),None)
+    
+            
 
     def scrape_unit(self, unit):
         """Call the scraper for the given unit. Will yield article objects

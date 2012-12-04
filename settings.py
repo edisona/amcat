@@ -40,6 +40,7 @@ AUTH_PROFILE_MODULE = 'amcat.UserProfile'
 #TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 #NOSE_ARGS = ['--with-progressive','--pdb']
 
+TIME_ZONE = 'Europe/Amsterdam'
 
 # Databases / Caches are defined in ~/.amcatrc3. Example file:
 #

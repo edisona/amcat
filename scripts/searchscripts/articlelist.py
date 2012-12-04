@@ -30,6 +30,11 @@ from django import forms
 import logging
 log = logging.getLogger(__name__)
 
+_LENGTH_OPTS = {
+    None : 100,
+    -1 : 999999
+}
+
 class ArticleListForm(amcat.scripts.forms.SelectionForm, amcat.scripts.forms.ArticleColumnsForm):
     start = forms.IntegerField(initial=0, min_value=0, widget=forms.HiddenInput, required=False)
     length = forms.IntegerField(initial=100, min_value=1, max_value=9999999,
@@ -44,18 +49,12 @@ class ArticleListForm(amcat.scripts.forms.SelectionForm, amcat.scripts.forms.Art
                     initial = 'asc', required=False)
 
     def clean_start(self):
-        data = self.cleaned_data['start']
-        if data == None:
-            data = 0
-        return data
+        start = self.cleaned_data['start']
+        return 0 if start is None else start 
 
     def clean_length(self):
-        data = self.cleaned_data['length']
-        if data == None:
-            data = 100
-        if data == -1:
-            data = 999999 # unlimited (well, sort of ;)
-        return data
+        length = self.cleaned_data['length']
+        return _LENGTH_OPTS.get(length, length)
 
     def clean_columns(self):
         data = self.cleaned_data['columns']
@@ -63,12 +62,6 @@ class ArticleListForm(amcat.scripts.forms.SelectionForm, amcat.scripts.forms.Art
             self._errors["columns"] = self.error_class(
                 ['Keyword in Context and Hits columns require a query'])
         return data
-
-    # def clean_sortColumn(self):
-        # if self.cleaned_data['sortColumn'] in ('id', 'date', 'medium_id'):
-            # return self.cleaned_data['sortColumn']
-        # return None
-
 
 class ArticleListScript(script.Script):
     """
@@ -92,12 +85,11 @@ class ArticleListScript(script.Script):
                                  + self.options['sortColumn'])
             qs = qs[start:start+length].select_related('medium__name', 'medium')
             return qs
-        else:
 
-            if self.options['highlight']:
-                return solrlib.highlightArticles(self.options)
-            else:
-                return solrlib.getArticles(self.options)
+        if self.options['highlight']:
+            return solrlib.highlightArticles(self.options)
+
+        return solrlib.getArticles(self.options)
 
 if __name__ == '__main__':
     from amcat.scripts.tools import cli

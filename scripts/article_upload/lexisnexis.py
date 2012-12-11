@@ -187,7 +187,7 @@ class LexisNexis(UploadScript):
         art = art.split("\n")
 
         for i in (0, -1):
-            while not art[i].strip():
+            while len(art) > 0 and not art[i].strip():
                 del art[i]
                 
         return "\n".join(art).replace("\r", "")
@@ -406,7 +406,7 @@ class LexisNexis(UploadScript):
     def parse_document(self, text):
         fields = self.parse_article(text)
         if fields is None:
-            return None
+            return []
         
         try:
             return self.body_to_article(*fields)

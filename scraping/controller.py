@@ -47,11 +47,11 @@ class Controller(object):
         raise NotImplementedError()
 
     def save(self, article):
-        log.debug("Saving article %s" % article)
+        log.debug("Saving article {article.headline!r}".format(**locals()))
         article.save()
 
         articleset = article.scraper.articleset if hasattr(article, 'scraper') else self.articleset
-        log.debug("Adding article %r to articleset %r" % (article.id, articleset))
+        log.debug("Adding article {article.id} to articleset {articleset!r}".format(**locals()))
         if articleset:
             articleset.add(article)
             articleset.save()

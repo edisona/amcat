@@ -122,10 +122,10 @@ class Scraper(Script):
         and medium filled in automatically.
         @return: a sequence of Article objects ready to .save()
         """
-        log.debug("Scraping unit %s" % unit)
+        log.debug("Scraping unit {unit!r}".format(**locals()))
         for article in self._scrape_unit(unit):
             article = self._postprocess_article(article)
-            log.debug(".. yields article %s" % article)
+            log.debug(".. yields article {article.headline!r}".format(**locals()))
             yield article
 
 

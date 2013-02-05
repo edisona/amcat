@@ -85,6 +85,7 @@ class CodingJob(AmcatModel):
             set_cache(coding, coding.get_values.__name__, values)
             yield coding
 
+
     def values_table(self, unit_codings=False):
         """
         Return the coded values in this job as a table3.Table with codings as rows
@@ -92,12 +93,18 @@ class CodingJob(AmcatModel):
         """
         schema_id = self.unitschema_id if unit_codings else self.articleschema_id
 	fields = CodingSchemaField.objects.filter(codingschema=schema_id)
-        columns = [table3.ObjectColumn(field.label, partial(Coding.get_value, field=field))
-                   for field in fields]
+        columns = [SchemaFieldColumn(field) for field in fields]
 	codings = Coding.objects.filter(codingjob=self, sentence__isnull=(not unit_codings))
 	codings = codings.prefetch_related("values", "values__field")
         return table3.ObjectTable(rows=list(codings), columns=columns)
-    
+
+class SchemaFieldColumn(table3.ObjectColumn):
+    def __init__(self, field):
+        super(SchemaFieldColumn, self).__init__(field.label)
+        self.field = field
+    def getCell(self, coding):
+        return coding.get_value(field=self.field)
+
 ###########################################################################
 #                          U N I T   T E S T S                            #
 ###########################################################################
@@ -124,7 +131,7 @@ class TestCodingJob(amcattest.PolicyTestCase):
         
         c = amcattest.create_test_coding(codingjob=job)
         c.update_values({strf:"bla", intf:1})
-	
+        
         self.assertEqual(set(job.values_table().to_list()), {('bla', 1, None)})
 
         code = amcattest.create_test_code(label="CODED")
@@ -136,17 +143,17 @@ class TestCodingJob(amcattest.PolicyTestCase):
         self.assertEqual(set(t.rows), {c, c2})
 
     def test_nqueries(self):
-	"""Does getting a table of values not use too many queries?"""
-	
+        """Does getting a table of values not use too many queries?"""
+        
         schema, codebook, strf, intf, codef = amcattest.create_test_schema_with_fields()
         job = amcattest.create_test_job(unitschema=schema, articleschema=schema)
 
-	for i in range(10):
-	    c = amcattest.create_test_coding(codingjob=job)
-	    c.update_values({strf:"bla %i"%i, intf:i})
+        for i in range(10):
+            c = amcattest.create_test_coding(codingjob=job)
+            c.update_values({strf:"bla %i"%i, intf:i})
 
         job = CodingJob.objects.get(pk=job.id)
-	with self.checkMaxQueries(6):
-	    # 1. get schema, 2. get codings, 3. get values, 4. get field, 5+6. get serialiser
-	    t = job.values_table()
-	    cells = list(t.to_list())
+        with self.checkMaxQueries(6):
+            # 1. get schema, 2. get codings, 3. get values, 4. get field, 5+6. get serialiser
+            t = job.values_table()
+            cells = list(t.to_list())

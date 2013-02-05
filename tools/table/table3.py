@@ -112,6 +112,10 @@ class Table(object):
         """Output the table; see tableoutput.table2unicode for options"""
         return tableoutput.table2unicode(self, **kargs)
 
+    def to_csv(self, **kargs):
+        """Output the table as csv; see tableoutput.table2csv for options"""
+        return tableoutput.table2csv(self, **kargs)
+
     def to_list(self, tuple_name="row"):
         """Return the data in the table as a sequence of named tuples
 

@@ -91,6 +91,12 @@ class Script(object):
             options = kargs
         return self.options_form(options)
 
+    def get_output_name(self):
+        """
+        Return the name of the output, eg for a filename
+        """
+        return self.__class__.__name__
+    
     @classmethod
     def get_empty_form(cls, **options):
         """

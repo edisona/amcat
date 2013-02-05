@@ -163,6 +163,7 @@ def _get_article_dicts(article_ids):
     for a in Article.objects.filter(pk__in=article_ids):
         yield dict(id=a.id,
                    headline=_clean(a.headline),
+                   author=_clean(a.author),
                    body=_clean(a.text),
                    byline=_clean(a.byline),
                    section=_clean(a.section),

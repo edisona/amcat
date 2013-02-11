@@ -32,10 +32,7 @@ import re
 class BZK(UploadScript):
 
     def _scrape_unit(self, _file):
-        try:
-            etree = html.parse(_file).getroot()
-        except Exception:
-            raise TypeError("failed HTML parsing. Are you sure you've inserted the right file?")
+        etree = html.fromstring(_file)
         title = etree.cssselect("title")[0].text.lower().strip()
         if "intranet/rss" in title or "werkmap" in title:
             for article in self.scrape_file(etree, title):

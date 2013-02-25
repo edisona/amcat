@@ -46,6 +46,7 @@ class Medium(AmcatModel):
         db_table = 'media'
         verbose_name_plural = 'media'
         app_label = 'amcat'
+        ordering = ('id',)
 
 def get_or_create_medium(medium_name):
     """

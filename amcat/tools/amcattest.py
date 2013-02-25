@@ -366,7 +366,8 @@ class PolicyTestCase(TestCase):
                 msg += "\n({}) {}".format(i+1, q["sql"])
             self.fail(msg)
     
-
+    def assertEqualsAsSets(self, actual, expected, msg=None):
+        self.assertSetEqual(set(actual), set(expected))
             
 class TestAmcatTest(PolicyTestCase):
     PYLINT_IGNORE_EXTRA = "E1103",

@@ -310,35 +310,36 @@ def articleset(request, project, aset):
 
 
 @check(Project)
-def selection(request, project):
+def query1(request, project):
     """
-    Render article selection page.
+    Prototype 'step-by-step' render of query page
+    Needs javascriptification and ajaxification (but that's someone else's problem)
 
-    TODO:
-     - update to meet PEP8 style
-     - remove/replace webscripts (?)
+    Step 1: select input type and article sets
     """
-    outputs = []
-    for ws in mainScripts:
-        outputs.append({
-            'id':ws.__name__, 'name':ws.name,
-            'formAsHtml': ws.formHtml(project)
-        })
+    def get_selection_form(s):
+        class form(Form):
+            from amcat.scripts.forms import ModelMultipleChoiceFieldWithIdLabel
+            set = ModelMultipleChoiceFieldWithIdLabel(queryset=s.get_sets(project))
+        return form()
 
-    formData = request.GET.copy()
-    formData['projects'] = project.id
+    from amcat.scripts.query.input import INPUT_SCRIPTS
+    inputs = [(name, get_selection_form(s)) for (name, s) in INPUT_SCRIPTS]
+    return render(request, 'navigator/project/query1.html', locals())
 
-    ctx = locals()
-    ctx.update({
-        'form' : SelectionForm(formData, initial={"datetype" : "all" }),
-        'outputs' : outputs,
-        'project' : project,
-        'context' : project,
-        'menu' : PROJECT_MENU,
-        'selected' : 'query'
-    })
+@check(Project)
+def query2(request, project, inputtype):
+    """
+    Prototype 'step-by-step' render of query page
+    Needs javascriptification and ajaxification (but that's someone else's problem)
 
-    return render(request, 'navigator/project/selection.html', ctx)
+    Step 2: input type and sets are selected, can now render real form
+    """
+    sets = map(int, request.GET.getlist('set'))
+    from amcat.scripts.query.input import INPUT_SCRIPTS
+    input_script = dict(INPUT_SCRIPTS)[inputtype]
+    form = input_script.get_empty_form(project=project, sets=sets)
+    return render(request, 'navigator/project/query2.html', locals())
 
 @check(Project)
 def codingjobs(request, project):

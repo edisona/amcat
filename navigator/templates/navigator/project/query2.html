@@ -1,0 +1,16 @@
+{% extends "navigator/project/base.html" %}
+
+{% block title %}Query {{project.id}} - {{project.name}}{% endblock %}
+
+{% block content %}
+<h1>Tim the ugly Query Wizard, step 2 -- select filters</h1>
+<div>
+  <form method="GET" action="{% url project-query2 id=project.id inputtype=inputtype %}">
+  <table>
+    {{ form }}
+    <tr><td><input type="submit" value="Next" /></tr></td>
+</table>
+  </form>
+</div>
+
+{% endblock %}

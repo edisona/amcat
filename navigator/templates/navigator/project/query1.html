@@ -1,0 +1,18 @@
+{% extends "navigator/project/base.html" %}
+
+{% block title %}Query {{project.id}} - {{project.name}}{% endblock %}
+
+{% block content %}
+<h1>Tim the ugly Query Wizard, step 1 -- select input type and article sets</h1>
+<div>
+  {% for type, form in inputs %}
+  <hr />
+  <h2> {{ type }} </h2>
+  <form method="GET" action="{% url project-query2 id=project.id inputtype=type %}">
+    {{ form }}
+    <br /><input type="submit" value="Next" />
+  </form>
+  {% endfor %}b
+</div>
+
+{% endblock %}

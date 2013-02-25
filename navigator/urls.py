@@ -85,7 +85,10 @@ urlpatterns = patterns(
     url(r'^project/add$', 'navigator.views.project.add', name='project-add'),
     url(r'^project/(?P<id>[0-9]+)$', 'navigator.views.project.view', name='project'),
     url(r'^project/(?P<id>[0-9]+)/articlesets$', 'navigator.views.project.articlesets', name='project-articlesets'),
-    url(r'^project/(?P<id>[0-9]+)/selection$', 'navigator.views.project.selection', name='project-selection'),
+
+    url(r'^project/(?P<id>[0-9]+)/query$', 'navigator.views.project.query1', name='project-query1'),
+    url(r'^project/(?P<id>[0-9]+)/query/(?P<inputtype>\w+)$', 'navigator.views.project.query2', name='project-query2'),
+
     url(r'^project/(?P<id>[0-9]+)/codingjobs$', 'navigator.views.project.codingjobs', name='project-codingjobs'),
     url(r'^project/(?P<id>[0-9]+)/schemas$', 'navigator.views.project.schemas', name='project-schemas'),
     url(r'^project/(?P<id>[0-9]+)/codebooks$', 'navigator.views.project.codebooks', name='project-codebooks'),

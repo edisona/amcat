@@ -53,7 +53,7 @@ NAVIGATOR_MENU = [
 PROJECT_MENU = (
     ('overview', 'project'),
     ('article sets', 'project-articlesets'),
-    ('query', 'project-selection'),
+    ('query', 'project-query'),
     ('codingjobs', 'project-codingjobs'),
     ('codingschemas', 'project-schemas'),
     ('codebooks', 'project-codebooks'),

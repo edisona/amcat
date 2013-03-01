@@ -16,22 +16,22 @@
 # You should have received a copy of the GNU Affero General Public        #
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
-from django.shortcuts import render
-from django.core.urlresolvers import reverse
-
 from api.rest import Datatable
 from api.rest.resources import MediumResource
 from amcat.models.medium import Medium
 
 import logging; log = logging.getLogger(__name__)
 
-def index(request):
-    #if getattr(request, "first_run", False):
-    #    from navigator.views import user
-    #    return user.view(request)
-    return render(request, 'navigator/report/index.html')
+from django.views.generic import TemplateView
 
-def media(request):
-    canadd = Medium.can_create(request.user)
-    media = Datatable(MediumResource)
-    return render(request, 'navigator/report/media.html', locals())
+class IndexView(TemplateView):
+    template_name = "navigator/report/index.html"
+
+class MediaView(TemplateView):
+    template_name = "navigator/report/media.html"
+
+    def get_context_data(self, **kwargs):
+        return { 
+            "can_add" : Medium.can_create(self.request.user),
+            "media" : Datatable(MediumResource)
+        }

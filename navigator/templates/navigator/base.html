@@ -42,7 +42,7 @@
     </div>
     <div id="menu-tabs">
      <span id="menu-tabs-title">{% block tabtitle %}{% endblock %}</span>
-      {% block tabs %}
+      {% comment %}{% block tabs %}
        {% for title, view, arg in menu %}
        <span class="tab {% if selected == title %}selected{% endif %}">
          <a href="{% if context %}{{ view|tab_url:context.id }}
@@ -54,12 +54,11 @@
 	 </a>
        </span>
        {% endfor %}
-      {% endblock %}
+      {% endblock %}{% endcomment %}
     </div>
    </div>
   </div>
    <div id="content-menu">
-    {{ request|render_menu }}
    </div>
     <div id="message-wrap">
      {% block message %}{% endblock %}

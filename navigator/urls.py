@@ -88,6 +88,7 @@ urlpatterns = patterns(
 
     url(r'^project/(?P<id>[0-9]+)/query$', 'navigator.views.project.query1', name='project-query1'),
     url(r'^project/(?P<id>[0-9]+)/query/(?P<inputtype>\w+)$', 'navigator.views.project.query2', name='project-query2'),
+    url(r'^project/(?P<id>[0-9]+)/query/(?P<inputtype>\w+)/result$', 'navigator.views.project.query3', name='project-query3'),
 
     url(r'^project/(?P<id>[0-9]+)/codingjobs$', 'navigator.views.project.codingjobs', name='project-codingjobs'),
     url(r'^project/(?P<id>[0-9]+)/schemas$', 'navigator.views.project.schemas', name='project-schemas'),

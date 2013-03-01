@@ -32,98 +32,80 @@ from amcat.scripts.script import Script
 from django import forms
 from amcat.scripts.forms import ModelMultipleChoiceFieldWithIdLabel
 from amcat.models import Project, ArticleSet, Medium
+from amcat.scripts.query.field import article_field
 
 class QueryInput(Script):
     """
     'Abstract' base class for QueryInput scripts. 
     """
+    
     @classmethod
     def get_sets(cls, project):
-        """Return the sets of the given project that are suitable as input for this script"""
-        raise NotImplementedError()
+        """
+        Return the sets of the given project that are suitable as input for this script.
+        By default, returns all fields in the project.
+        """
+        return project.all_articlesets()
 
     @classmethod
-    def get_empty_form(cls, project, sets, **options):
-        """Return the form with filter values specified for this project/sets"""
-        raise NotImplementedError()
+    def get_options_form(cls, project, sets, **options):
+        """Return the form with filter values specified for this project/sets
 
-DATETYPES = {
-    "all" : "All Dates",
-    "on" : "On",
-    "before" : "Before",
-    "after" : "After",
-    "between" : "Between",
-}
-    
-class ArticleMetaForm(forms.Form):
-    project = forms.ModelChoiceField(queryset=Project.objects.order_by('-pk')) 
-    articlesets = ModelMultipleChoiceFieldWithIdLabel(queryset=ArticleSet.objects.none(), required=False)
-    mediums = ModelMultipleChoiceFieldWithIdLabel(queryset=Medium.objects.none(), required=False)
-    datetype = forms.ChoiceField(choices=DATETYPES.items(), initial='all')
-    startDate = forms.DateField(input_formats=('%d-%m-%Y',), required=False)
-    endDate = forms.DateField(input_formats=('%d-%m-%Y',), required=False)
-    onDate = forms.DateField(input_formats=('%d-%m-%Y',), required=False)
-    # queries will be added by clean(), that contains a list of SearchQuery objects
-    
-    def clean(self):
-        # handle date ranges
-        cleanedData = self.cleaned_data
-        if cleanedData.get('datetype') in ('after', 'all') and 'endDate' in cleanedData:
-            del cleanedData['endDate']
-        if cleanedData.get('datetype') in ('before', 'all') and 'startDate' in cleanedData:
-            del cleanedData['startDate']
-        if cleanedData.get('datetype') == 'on':
-            cleanedData['datetype'] = 'between'
-            cleanedData['startDate'] = cleanedData['onDate'] 
-            cleanedData['endDate'] = cleanedData['onDate'] + datetime.timedelta(1)
-        # validate dates
-        missingDateMsg = "Missing date"
-        if 'endDate' in cleanedData and cleanedData['endDate'] == None: 
-            self._errors["endDate"] = self.error_class([missingDateMsg])
-            del cleanedData['endDate']
-        if 'startDate' in cleanedData and cleanedData['startDate'] == None: 
-            self._errors["startDate"] = self.error_class([missingDateMsg])
-            del cleanedData['startDate']
-        #todo: shouldn't we validate enddate > startdate etc?
-        return cleanedData
+        By default, returns:
+        - the options_form with project and article set filled in and hidden
+        - plus any filter fields returned by get_fields
+        - plus a multichoice list of output fields from get_fields
+        """
+
+        p = project
+        fields = cls.get_fields(project, sets)
+        fieldnames = [(field.label, field.label) for field in fields]
+
+        class Form(forms.Form):
+            project = forms.ModelChoiceField(queryset=Project.objects.filter(pk=p.id), initial=p)
+            project.widget = forms.HiddenInput()
+            # how to specify initial value for multi choice?
+            articlesets = forms.ModelMultipleChoiceField(queryset=ArticleSet.objects.filter(pk__in=sets), initial=" ".join(str(s) for s in sets))
+            articlesets.widget = forms.HiddenInput()
+
+            Fields = forms.MultipleChoiceField(choices=fieldnames)
+
+            def clean_fields(self, cleanedData):
+                raise Exception(cleanedData)
+            
+
+        for field in fields:
+            if field.can_filter:
+                for label, form_field in field.get_form_fields(project, sets):
+                    # add to attribute and base_fields
+                    setattr(Form, label, form_field)
+                    Form.base_fields[label] = form_field
+
+
+        return Form
 
     
 class ArticleMetaInput(QueryInput):
     """QueryInput Script based on article meta data"""
 
-    options_form = ArticleMetaForm
-    
     @classmethod
-    def get_sets(cls, project):
-        return project.all_articlesets()
-    
-    @classmethod
-    def get_empty_form(cls, project, sets, **options):
-        f = cls.options_form()
-        f.fields['project'].initial = project
-        f.fields['project'].widget = forms.HiddenInput()
-        f.fields['articlesets'].initial = sets
-        #f.fields['articlesets'].queryset = cls.get_sets(project)
-        f.fields['articlesets'].widget = forms.HiddenInput()
+    def get_fields(cls, project, sets):
+        return [article_field(f) for f in ['Medium', 'Author', 'Section', 'Date']]
 
-        f.fields['mediums'].queryset = Medium.objects.filter(article__articlesets_set__in=sets).distinct()
-
-        
-        return f
     
 class SolrInput(QueryInput):
     """QueryInput Script based on solr full text index data"""
     @classmethod
     def get_sets(cls, project):
         """Use only sets that have been indexed"""
-        return project.all_articlesets().filter(indexed=True, index_dirty=False)
+        return super(SolrInput, cls).get_sets(project).filter(indexed=True, index_dirty=False)
 
 class CodingInput(QueryInput):
     """QueryInput Script based on manually coded data"""
     @classmethod
     def get_sets(cls, project):
         """Use only sets that are used as a coding job"""
-        return project.all_articlesets().filter(codingjob_set__isnull=False)
+        return super(CodingInput, cls).get_sets(project).filter(codingjob_set__isnull=False)
 
 INPUT_SCRIPTS = [(unicode(s.__name__), s) for s in [ArticleMetaInput, SolrInput, CodingInput]]
     

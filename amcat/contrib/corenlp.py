@@ -29,8 +29,6 @@ import os, sys, time
 import re
 import logging
 import pexpect
-from unidecode import unidecode
-from jsonrpclib import SimpleJSONRPCServer, Server
 from cStringIO import StringIO
 
 log = logging.getLogger(__name__)
@@ -244,6 +242,7 @@ class StanfordCoreNLP(object):
 	return results
 
 def serve(host="localhost", port=8080, **kargs):
+    from jsonrpclib import SimpleJSONRPCServer
     server = SimpleJSONRPCServer.SimpleJSONRPCServer((host, port))
     nlp = StanfordCoreNLP(**kargs)
     server.register_function(nlp.parse)
@@ -251,6 +250,7 @@ def serve(host="localhost", port=8080, **kargs):
     server.serve_forever()
     
 def parse_remote(text, host="localhost", port=8080):
+    from jsonrpclib import Server
     uri = 'http://{host}:{port}/'.format(**locals())
     server = Server(uri)
     result = server.parse(text)

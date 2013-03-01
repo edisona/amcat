@@ -45,9 +45,7 @@ class Script(object):
     - output_type: a class representing the output that the script will produce.
     """
 
-    input_type = None
     options_form = None
-    output_type = None
 
     def __init__(self, options=None, **kargs):
         """Default __init__ validates and stores the options form"""
@@ -59,11 +57,20 @@ class Script(object):
             self.options = self.bound_form.cleaned_data
 
 
-    def run(self, input=None):
-        """Run is invoked with the input, which should be of type input_type,
-        and should return a result of type output_type or raise an exception"""
-        pass
+    def run(self):
+        """
+        This is the method that does the actual work.
+        By default, calls _run with the options form as keyword arguments
+        """
+        self._run(**self.options)
 
+
+    def _run(self, **options):
+        """
+        This method is called by run unless it is overridden
+        """
+        pass
+        
     def _validate_form(self):
         """Validate self.bound_form, raising an exception if invalid"""
         validate(self.bound_form)
@@ -94,17 +101,17 @@ class Script(object):
         return self.options_form(options, options)
 
     @classmethod
-    def get_empty_form(cls, **options):
+    def get_options_form(cls, **options):
         """
         Get an 'empty form', possibly initialized with options such as user or project
         """
         f = cls.options_form
         try:
-            get_empty = f.get_empty
+            get_form = f.get_form
         except AttributeError:
-            return f()
+            return f
         else:
-            return get_empty(**options)
+            return get_form(**options)
 
     @classmethod
     def name(cls):

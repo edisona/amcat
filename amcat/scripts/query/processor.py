@@ -48,7 +48,7 @@ class Processor(Script):
         raise NotImplementedError()
 
     @classmethod
-    def get_empty_form(cls, project, sets, input_script):
+    def get_options_form(cls, project, sets, input_script):
         """
         Return the form instance specific for the given project,
         aricle sets, and input script.

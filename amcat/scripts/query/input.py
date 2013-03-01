@@ -84,38 +84,14 @@ class QueryInput(Script):
 
         return Form
 
-    
-class ArticleMetaInput(QueryInput):
-    """QueryInput Script based on article meta data"""
 
-    @classmethod
-    def get_fields(cls, project, sets):
-        return [article_field(f) for f in ['Medium', 'Author', 'Section', 'Date']]
-
-    
-class SolrInput(QueryInput):
-    """QueryInput Script based on solr full text index data"""
-    @classmethod
-    def get_sets(cls, project):
-        """Use only sets that have been indexed"""
-        return super(SolrInput, cls).get_sets(project).filter(indexed=True, index_dirty=False)
-
-class CodingInput(QueryInput):
-    """QueryInput Script based on manually coded data"""
-    @classmethod
-    def get_sets(cls, project):
-        """Use only sets that are used as a coding job"""
-        return super(CodingInput, cls).get_sets(project).filter(codingjob_set__isnull=False)
-
-INPUT_SCRIPTS = [(unicode(s.__name__), s) for s in [ArticleMetaInput, SolrInput, CodingInput]]
-    
 ###########################################################################
 #                          U N I T   T E S T S                            #
 ###########################################################################
 
 from amcat.tools import amcattest
 
-class TestInput(amcattest.PolicyTestCase):
+class InputTestSetup(object):
     def setUp(self):
         self.p = amcattest.create_test_project()
         self.indexed_set, self.unindexed_set, self.coding_set = [amcattest.create_test_set(project=self.p, articles=5+i) for i in range(3)]
@@ -124,15 +100,6 @@ class TestInput(amcattest.PolicyTestCase):
             s.indexed = s == self.indexed_set
             s.index_dirty = False
             s.save()
-        
-        j = amcattest.create_test_job(project=self.p, articleset=self.coding_set)
+        self.job = amcattest.create_test_job(project=self.p, articleset=self.coding_set)
     
-    def test_get_sets(self):
-        for (cls, sets) in [
-            (ArticleMetaInput, self.all_sets),
-            (SolrInput, {self.indexed_set}),
-            (CodingInput, {self.coding_set}),
-            ]:
-            self.assertEqualsAsSets(cls.get_sets(self.p), sets)
-        
     

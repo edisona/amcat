@@ -1,0 +1,6 @@
+class SolrInput(QueryInput):
+    """QueryInput Script based on solr full text index data"""
+    @classmethod
+    def get_sets(cls, project):
+        """Use only sets that have been indexed"""
+        return super(SolrInput, cls).get_sets(project).filter(indexed=True, index_dirty=False)

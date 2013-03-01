@@ -44,3 +44,10 @@ db source into an aggregate queryset. The result of tabulation is a 'matrix': a 
 Finally, a user can select to run a custom script instead of a tabulation. This script needs to
 specify its choice of columns and its output type. *beter uitwerken*
 """
+
+
+from amcat.scripts.query.articlemetainput import ArticleMetaInput
+from amcat.scripts.query.solrinput import SolrInput
+from amcat.scripts.query.codinginput import CodingInput
+
+INPUT_SCRIPTS = [(unicode(s.__name__), s) for s in [ArticleMetaInput, SolrInput, CodingInput]]

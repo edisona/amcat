@@ -17,61 +17,78 @@
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
-from django.conf.urls.defaults import patterns, url
+from django.conf.urls.defaults import patterns, url, include
 from django.contrib.auth.views import password_change, password_change_done
 
 from navigator.views import report
 from navigator.views import project
+from navigator.views import user
+from navigator.views import plugin
+
+import navigator.views.project.urls
+
+specific_user_patterns = patterns('',
+    url(r'$', user.view, name='user'),
+    url(r'edit$', user.edit, name='user-edit'),
+) 
+
+user_patterns = patterns('',
+    url(r'^(?P<user_id>[0-9]+)/', include(specific_user_patterns)),
+
+    # Password recovery
+    url(r'^change-password$', password_change, name='user-change-password', kwargs= {
+        "template_name" : "navigator/user/change_password.html",
+        "post_change_redirect"  : "change-password-done"
+    }),
+
+    url(r'^change-password-done$', password_change_done, kwargs={
+        "template_name" : "navigator/user/change_password_done.html"
+    }),
+
+    # "Simple" actions
+    url(r'^add-submit$', 'navigator.views.user.add_submit', name='user-add-submit'),
+    url(r'^self$', user.view_self),
+    url(r'^add$', user.add, name="user-add"),
+
+    # Report
+    url(r'^active-affiliated$', user.my_affiliated_active, name="affiliated-users"),
+    url(r'^all-affiliated$', user.my_affiliated_all, name="all-affiliated-users"),
+    url(r'^all$', user.all, name='all-users'),
+)
+
+specific_codingjob_patterns = patterns('',
+    url(r'^export-unit$', 'navigator.views.project.project.codingjob_unit_export', name='project-codingjob-unit-export'),
+    url(r'^export-article$', 'navigator.views.project.project.codingjob_article_export', name='project-codingjob-article-export'),
+)
+
+codingjob_patterns = patterns('',
+    url(r'^job/(?P<codingjob_id>[0-9]+)/', include(specific_codingjob_patterns)),
+    url(r'^by-coder/(?P<coder_id>\d+)/active$' ,'navigator.views.codingjob.index', name='codingjobs'),
+    url(r'^by-coder/(?P<coder_id>\d+)/all$' ,'navigator.views.codingjob.all', name='codingjobs-all'),
+)
 
 urlpatterns = patterns(
     '',
     url(r'^$', report.IndexView.as_view(), name="index"),
     url(r'^media$', report.MediaView.as_view(), name="media"),
     url(r'^project/', include(project.urls)),
-
-    # User report
-    url(r'^users$', 'navigator.views.user.my_affiliated_active', name='users'),
-    url(r'^users/my_all$', 'navigator.views.user.my_affiliated_all'),
-    url(r'^users/all$', 'navigator.views.user.all', name='all-users'),
+    url(r'^user/', include(user_patterns)),
+    url(r'^codingjobs/', include(codingjob_patterns)),
 
     url(r'^selection$', 'navigator.views.selection.index', name='selection'),
 
     # Media
     url(r'^medium/add$', 'navigator.views.medium.add', name='medium-add'),
 
-    # Users
-    url(r'^user/(?P<id>[0-9]+)?$', 'navigator.views.user.view', name='user'),
-    url(r'^user/edit/(?P<id>[0-9]+)$', 'navigator.views.user.edit', name='user-edit'),
-    url(r'^user/add$', 'navigator.views.user.add', name='user-add'),
-    url(r'^user/add-submit$', 'navigator.views.user.add_submit', name='user-add-submit'),
-    url(r'^user/change-password$', password_change, name='user-change-password',
-        kwargs=dict(
-            template_name="navigator/user/change_password.html",
-            post_change_redirect='change-password-done'
-        )),
-    url(r'^user/change-password-done$', password_change_done,
-        kwargs=dict(
-            template_name="navigator/user/change_password_done.html"
-        )),
-
-
     # Plugins
-    url(r'^plugins$', 'navigator.views.plugin.index', name='plugins'),
-    url(r'^plugins/(?P<id>[0-9]+)$', 'navigator.views.plugin.manage', name='manage-plugins'),
-    url(r'^plugins/(?P<id>[0-9]+)/add$', 'navigator.views.plugin.add', name='add-plugin'),
+    url(r'^plugins$', plugin.index, name='plugins'),
+    url(r'^plugins/(?P<id>[0-9]+)$', plugin.manage, name='manage-plugins'),
+    url(r'^plugins/(?P<id>[0-9]+)/add$', plugin.add, name='add-plugin'),
     
     # Coding
-    url(r'^coding/schema-editor$', 'navigator.views.schemas.index'),
-    url(r'^coding/codingschema/(?P<id>[0-9]+)$', 'navigator.views.schemas.schema',
-        name='codingschema'),
-    url(r'^codingjob/(?P<codingjob>[0-9]+)/export-unit$', 'navigator.views.project.codingjob_unit_export', name='project-codingjob-unit-export'),
-    url(r'^codingjob/(?P<codingjob>[0-9]+)/export-article$', 'navigator.views.project.codingjob_article_export', name='project-codingjob-article-export'),
-
-
-    #url(r'^codingjobs/(?P<coder_id>\d+|all)/(?P<status>all|unfinished)/$' ,'navigator.views.codingjob.index', name='codingjobs'),
-    #url(r'^codingjobs$' ,'navigator.views.codingjob.index', name='codingjobs'),
-    url(r'^codingjobs/(?P<coder_id>\d+)?$' ,'navigator.views.codingjob.index', name='codingjobs'),
-    url(r'^codingjobs/(?P<coder_id>\d+)/all$' ,'navigator.views.codingjob.all', name='codingjobs-all'),
+    #url(r'^coding/schema-editor$', 'navigator.views.schemas.index'),
+    #url(r'^coding/codingschema/(?P<id>[0-9]+)$', 'navigator.views.schemas.schema',
+    #    name='codingschema'),
 
     # Preprocessing
     url(r'^analysis/(?P<id>[0-9-]+)$', 'navigator.views.analysis.demo', name='analysis-demo'),
@@ -80,8 +97,7 @@ urlpatterns = patterns(
     # Scrapers
     url(r'^scrapers$', 'navigator.views.scrapers.index', name='scrapers'),
 
-
-    url(r'^semanticroles$', 'navigator.views.semanticroles.index', name='semanticroles'),
-    url(r'^semanticroles/(?P<id>[0-9]+)$', 'navigator.views.semanticroles.sentence', name='semanticroles-sentence'),
+    #url(r'^semanticroles$', 'navigator.views.semanticroles.index', name='semanticroles'),
+    #url(r'^semanticroles/(?P<id>[0-9]+)$', 'navigator.views.semanticroles.sentence', name='semanticroles-sentence'),
 
 ) 

@@ -75,6 +75,9 @@ def view(request, user=None, form=None):
                                                         'success' : success,
                                                         'menu' : menu})
 
+def view_self(request, user, form):
+    return
+
 @check(User, action='update')
 def edit(request, user):
     form = forms.UserForm(request, data=request.POST or None, instance=user)

@@ -163,8 +163,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.i18n",
     "django.core.context_processors.media",
     "django.contrib.messages.context_processors.messages",
-    "django.contrib.auth.context_processors.auth",
-    "navigator.context.extra"
+    "django.contrib.auth.context_processors.auth"
 )
 
 DEFAULT_FROM_EMAIL = "wat200@vu.nl"

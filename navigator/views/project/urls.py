@@ -16,23 +16,76 @@
 # You should have received a copy of the GNU Affero General Public        #
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
+"""
+This is the urlrouter for everything within a project. Each specific object
+(articlesets, articles, schemas, etc.) gets its own patterns, which is included
+by the main patterns.
+"""
 
-from django.conf.urls.defaults import patterns, url
+from django.conf.urls.defaults import patterns, url, include
 
 from navigator.views.project import project
 
-# These patterns are prepended with (?P<project_id>[0-9]+)
-project_patterns = patterns(
-    '',
+# Router for article-pages
+article_patterns = patterns('',
+    url(r'^$', project.article, name="articleset-article")
+)
+
+# Router for articleset-pages
+articleset_patterns = patterns('',
+    url(r'^$', project.articleset, name="articleset"),
+    url(r'^edit$', project.edit_articleset, name="articleset-edit"),
+    url(r'^delete$', project.delete_articleset, name="articleset-delete"),
+    url(r'^unlink$', project.unlink_articleset, name="articleset-unlink"),
+    url(r'^deduplicate$', project.deduplicate_articleset, name="articleset-deduplicate"),
+    url(r'^name-import$', project.import_articleset, name="articleset-import"),
+
     # Articles
-    url(r'^article/(?P<id>[0-9]+)$', project.article),
-    url(r'^articleset/(?P<id>[0-9]+)$', project.articleset, name="articleset"),
-    url(r'^articleset/edit/(?P<id>[0-9]+)$', project.edit_articleset, name="articleset-edit"),
-    url(r'^articleset/delete/(?P<id>[0-9]+)$', project.delete_articleset, name="articleset-delete"),
-    url(r'^articleset/unlink/(?P<id>[0-9]+)$', project.unlink_articleset, name="articleset-unlink"),
-    url(r'^articleset/deduplicate/(?P<id>[0-9]+)$', project.deduplicate_articleset, name="articleset-deduplicate"),
-    url(r'^articleset/importable$', project.show_importable_articlesets, name="articleset-importable"),
-    url(r'^articleset/name-import/(?P<id>[0-9]+)$$', project.import_articleset, name="articleset-import"),
+    url(r'^article/(?P<article_id>[0-9]+)/$', include(article_patterns))
+)
+
+# Router for user-pages
+user_patterns = patterns('',
+    url(r'^$', project.project_role),
+)
+
+# Router for codebook-pages
+codebook_patterns = patterns('',
+    url(r'^$', project.codebook, name='project-codebook'),
+    url(r'^add$', project.add_codebook, name='project-add-codebook'),
+    url(r'^save_labels$', project.save_labels),
+    url(r'^save_name$', project.save_name),
+    url(r'^save_changesets$', project.save_changesets),
+)
+
+codingschemafield_patterns = patterns('',
+    url(r'^$', project.edit_schemafield, name='project-edit-schemafield'),
+    url(r'^delete$', project.delete_schemafield, name='project-delete-schemafield'),
+)
+
+codingschema_patterns = patterns('',
+    url(r'^$', project.schema, name='project-schema'),
+    url(r'^edit$', project.edit_schema, name='project-edit-schema'),
+    url(r'^copy$', project.copy_schema, name='project-copy-schema'),
+    url(r'^name$', project.name_schema, name='project-name-schema'),
+    url(r'^field/(?P<codingschemafield_id>[0-9]+)', include(codingschemafield_patterns))
+)
+
+codingjob_patterns = patterns('',
+    url(r'^$', project.view_codingjob, name='project-codingjob'),
+)
+
+# For everything within a specific project
+project_patterns = patterns('',
+    # Delegating to more specific routers
+    url(r'^user/(?P<user_id>[0-9]+)/', include(user_patterns)),
+    url(r'^articleset/(?P<artcleset_id>[0-9]+)/', include(articleset_patterns)),
+    url(r'^codebook/(?P<codebook_id>[0-9]+)/', include(codebook_patterns)),
+    url(r'^codingschema/(?P<codingschema_id>[0-9]+)/', include(codingschema_patterns)),
+    url(r'^codingjob/(?P<codingjob_id>[0-9]+)/', include(codingjob_patterns)),
+
+    # Articlesets
+    url(r'^importable$', project.show_importable_articlesets, name="articleset-importable"),
 
     # Overviews
     url(r'^$', project.view, name='project'),
@@ -41,11 +94,21 @@ project_patterns = patterns(
     url(r'^codingjobs$', project.codingjobs, name='project-codingjobs'),
     url(r'^schemas$', project.schemas, name='project-schemas'),
     url(r'^codebooks$', project.codebooks, name='project-codebooks'),
-    url(r'^users$', project.users, name='project-users'),
+    url(r'^users$', project.users_view, name='project-users'),
+
+    # Actions
+    url(r'^edit$', project.edit, name='project-edit'),
+    url(r'^add-user$', project.users_add, name='project-user-add'),
+    url(r'^add-codingschema$', project.new_schema, name='project-add-schema'),
+    url(r'^add-codingjob$', project.add_codingjob, name='project-add-codingjob'),
+    url(r'^upload-articles$', project.upload_article, name='project-upload-articles'),
+    url(r'^upload-articles/scrapers$', project.scrape_articles, name='project-scrape-articles'),
+    url(r'^upload-articles/plugin/(?P<plugin>[0-9]+)$', project.upload_article_action, name='project-upload-articles-action'), 
+    url(r'^import$', project.import_codebooks, name='project-codebook-import'),
 )
 
-urlpatterns = patterns(
-    '',
+# Main router
+urlpatterns = patterns('',
     # Project report
     url(r'^$', project.my_active, name='projects'),
     url(r'^my_all$', project.my_all),
@@ -53,33 +116,5 @@ urlpatterns = patterns(
     url(r'^add$', project.add, name='project-add'),
 
     # Include project-specific urls
-    urls("^(?P<project_id>[0-9]+)/", include(project_patterns)),
-
-    # Projects (+managers)
-
-
-    url(r'^edit$', 'navigator.views.project.edit', name='project-edit'),
-    url(r'^users/add$', 'navigator.views.project.users_add'),
-    url(r'^upload-articles$', 'navigator.views.project.upload_article', name='upload-articles'),
-    url(r'^upload-articles/scrapers$', 'navigator.views.project.scrape_articles', name='scrape-articles'),
-
-    url(r'^upload-articles/(?P<plugin>[0-9]+)$', 'navigator.views.project.upload_article_action', name='upload-articles-action'), 
-    url(r'^user/(?P<user>[0-9]+)$', 'navigator.views.project.project_role'),
-
-    url(r'^codebook/(?P<codebook>[-0-9]+)$', 'navigator.views.project.codebook', name='project-codebook'),
-    url(r'^codebook/(?P<codebook>[-0-9]+)/save_labels$', 'navigator.views.project.save_labels'),
-    url(r'^codebook/(?P<codebook>[-0-9]+)/save_name$', 'navigator.views.project.save_name'),
-    url(r'^codebook/(?P<codebook>[-0-9]+)/save_changesets$', 'navigator.views.project.save_changesets'),
-    url(r'^codebook/add$', 'navigator.views.project.add_codebook', name='project-add-codebook'),
-    url(r'^schema/(?P<schema>[-0-9]+)$', 'navigator.views.project.schema', name='project-schema'),
-    url(r'^schema/new$', 'navigator.views.project.new_schema', name='project-new-schema'),
-    url(r'^schema/(?P<schema>[-0-9]+)/edit$', 'navigator.views.project.edit_schema', name='project-edit-schema'),
-    url(r'^schema/(?P<schema>[-0-9]+)/copy$', 'navigator.views.project.copy_schema', name='project-copy-schema'),
-    url(r'^schema/(?P<schema>[-0-9]+)/name$', 'navigator.views.project.name_schema', name='project-name-schema'),
-    url(r'^schema/(?P<schema>[-0-9]+)/edit/schemafield/(?P<schemafield>[0-9]+)$', 'navigator.views.project.edit_schemafield', name='project-edit-schemafield'),
-    url(r'^schema/(?P<schema>[-0-9]+)/edit/schemafield/(?P<schemafield>[0-9]+)/delete$', 'navigator.views.project.delete_schemafield', name='project-delete-schemafield'),
-
-    url(r'^add_codingjob$', 'navigator.views.project.add_codingjob', name='codingjob-add'),
-    url(r'^codingjob/(?P<codingjob>[0-9]+)$', 'navigator.views.project.view_codingjob', name='codingjob'),
-    url(r'^import$', 'navigator.views.project.import_codebooks', name='codebook-import'),
+    url("^(?P<project_id>[0-9]+)/", include(project_patterns)),
 ) 

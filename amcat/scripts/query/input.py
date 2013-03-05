@@ -67,14 +67,11 @@ class QueryInput(Script):
     
     @classmethod
     def get_form_fields(cls, sets):
-        """Return the form with filter values specified for this project/sets
-
-        By default, returns:
-        - the options_form with project and article set filled in and hidden
-        - plus any filter fields returned by get_fields
-        - plus a multichoice list of output fields from get_fields
         """
-
+        Return the form with filter values specified for this project/sets. The form consists
+        of the forms fields of the field providers, plus a choice field for the output fields.
+        @return: a sequence of key, form field pairs
+        """
         fieldnames = []
         for provider in FIELD_PROVIDERS:
             for label, field in provider.get_filter_fields(sets):

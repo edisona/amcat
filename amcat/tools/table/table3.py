@@ -50,7 +50,7 @@ def trivialCellFunc(row, col):
 class Table(object):
     """Generic interface on rectangular tables.
 
-    Supports read access using getRows/getColumns/getValue and
+   Supports read access using getRows/getColumns/getValue and
     using index access to and iteration over the 'Named' rows
     e.g. print row[1].colA; for row in table: print(row.colB)
 
@@ -305,10 +305,11 @@ class DictTable(Table):
     Convenience subclass of Table that creates a dict to hold the cell values,
     and adds column and row objects as needed
     """
-    def __init__(self, default=None):
-        Table.__init__(self, OrderedSet(), OrderedSet(),
-                       self.getValue)
-        self.data = {}
+    def __init__(self, default=None, data=None, rows=None, cols=None):
+        if rows is None: rows = OrderedSet()
+        if cols is None: cols = OrderedSet()
+        Table.__init__(self, cols, rows)
+        self.data = data if data is not None else {}
         self.default = default
     def addValue(self, row, col, value):
         """Set the given value in the data dict"""

@@ -62,7 +62,7 @@ class Script(object):
         This is the method that does the actual work.
         By default, calls _run with the options form as keyword arguments
         """
-        self._run(**self.options)
+        return self._run(**self.options)
 
 
     def _run(self, **options):

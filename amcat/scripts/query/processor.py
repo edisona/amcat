@@ -33,32 +33,117 @@ operation. For db data, the tabulation is done by converting the
 queryset of the db source into an aggregate queryset. The result of
 tabulation is a 'matrix': a table with (generally limited) rows and
 columns drawn from the selected fields and numeric cell values.
-
-Finally, a user can select to run a custom script instead of a
-tabulation. This script needs to specify its choice of columns and its
-output type. *beter uitwerken*
 """
 
 from amcat.scripts.script import Script
+from django import forms
+from django.core import validators
+import csv
+from amcat.tools.table import table3
+
+class TableField(forms.FileField):
+    """
+    Field for a table input (deserialized from csv, other formats to be added)
+    Allow a Table object to be passed in directly as well to allow for shortcuts
+    """
+    def __init__(self, *args, **kargs):
+        self.format = kargs.pop('format', 'csv')
+        super(TableField, self).__init__(*args, **kargs)
+        
+    def to_python(self, data):
+        if data in validators.EMPTY_VALUES:
+            return None
+        if isinstance(data, table3.Table): 
+            return data # no processing needed
+        else:
+            r = csv.reader(data)
+            colnames = r.next()
+            return table3.ListTable(r, colnames)
+    
+
 
 class Processor(Script):
-    @classmethod
-    def suitable_for_input(cls, input_script):
-        """Return whether this processor can process the results of the given input script"""
-        raise NotImplementedError()
+    """
+    Base class for scripts that can process query input results.
+    The script 
+    """
 
-    @classmethod
-    def get_options_form(cls, project, sets, input_script):
-        """
-        Return the form instance specific for the given project,
-        aricle sets, and input script.
-        """
-        raise NotImplementedError()
-
-class ArticleList(Processor):
-    """Trivial processor to allow exporting a list directly"""
+    class options_form(forms.Form):
+        input_table = TableField()
+    
 
 class Tabulator(Processor):
     """Stream tabulator for tabulating a list"""
     
+    @classmethod
+    def get_options_form(cls, output_fields):
+        class CustomOptionsForm(Processor.options_form):
+            Rows = forms.ChoiceField(choices=[(f,f) for f in output_fields])
+            Columns =  forms.ChoiceField(choices=[(f,f) for f in output_fields])
+        return CustomOptionsForm
     
+    def _run(self, input_table, Rows, Columns):
+        row_col, col_col = None, None
+        for col in input_table.getColumns():
+            if str(col) == Rows: row_col = col
+            if str(col) == Columns: col_col = col
+            
+        return stream_tabulate(input_table, row_col, col_col)
+
+def stream_tabulate(table, row_column, col_column):
+    """
+    Do a stream tabulation (currently only count) of the table
+    @return: a table with the found values of row and col columns in the rows and columns,
+             and the counts in the cell values
+    """
+    result = {}
+    rows, cols = set(), set()
+    for row in table.getRows():
+        row_val = table.getValue(row, row_column)
+        col_val = table.getValue(row, col_column)
+        rows.add(row_val)
+        cols.add(col_val)
+        result[row_val, col_val] = result.get((row_val, col_val), 0) + 1
+    return table3.DictTable(data=result, rows=rows, cols=cols)
+    
+###########################################################################
+#                          U N I T   T E S T S                            #
+###########################################################################
+
+from amcat.tools import amcattest
+
+class TestTableField(amcattest.PolicyTestCase):
+    class TestForm(forms.Form):
+        table = TableField()
+
+    def test_deserialize(self):
+        """can the table field deserialize a csv file?"""
+        import StringIO
+        table = StringIO.StringIO("a,b\n1,2\n3,4")
+        f = self.TestForm(files=dict(table=table))
+        self.assertEqual(f.is_valid(), True)
+        result = f.cleaned_data['table']
+        self.assertEqual([str(f) for f in result.getColumns()], ["a","b"])
+        self.assertEqual(len(list(result.to_list())), 2)
+
+    def test_deserialize(self):
+        """can the table field handle a table object?"""
+        table = table3.ListTable([(1,2), (3,4)], ["a", "b"])
+        f = self.TestForm(files=dict(table=table))
+        self.assertEqual(f.is_valid(), True)
+        result = f.cleaned_data['table']
+        self.assertEqual([str(f) for f in result.getColumns()], ["a","b"])
+        self.assertEqual(len(list(result.to_list())), 2)
+
+
+class TestTabulator(amcattest.PolicyTestCase):
+    def test_tabulate(self):
+        table = table3.ListTable([(1,20, 300), (1,30, 400), (2, 20, 500)], ["a", "b", "c"])
+        form = Tabulator.get_options_form(output_fields = ["a","b","c"])
+        form = form(data=dict(Rows="a", Columns="b"), files=dict(input_table=table))
+        tabulator = Tabulator(form)
+        result = tabulator.run()
+        self.assertEqual(sorted(result.getRows()), [1, 2])
+        self.assertEqual(sorted(result.getColumns()), [20, 30])
+        self.assertEqual(result.data[1, 20], 1)
+        

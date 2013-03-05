@@ -76,7 +76,9 @@ class QueryInput(Script):
         for provider in FIELD_PROVIDERS:
             for label, field in provider.get_filter_fields(sets):
                 yield label, field
-                fieldnames += list(provider.get_output_fields(sets))
+                for fieldname in provider.get_output_fields(sets):
+                    if fieldname not in fieldnames:
+                        fieldnames.append(fieldname)
                 
         yield "Columns", forms.MultipleChoiceField(choices=[(f,f) for f in fieldnames])
 

@@ -318,49 +318,14 @@ def query(request, project):
     Step 1: select input type and article sets
     """
     
-    from amcat.scripts.query.input import QueryInput
+    from amcat.scripts.query.query import Query
+    #from amcat.scripts.query.input import QueryInput as Query
     from amcat.tools.table import tableoutput
-    form = QueryInput.options_form(request.POST or None, project=project)
+    form = Query.options_form(request.POST or None, project=project)
     if form.is_valid():
-        result = QueryInput(form).run()
+        result = Query(form).run()
         result_table = tableoutput.table2html(result)
     return render(request, 'navigator/project/query1.html', locals())
-
-@check(Project)
-def query2(request, project, inputtype):
-    """
-    Prototype 'step-by-step' render of query page
-    Needs javascriptification and ajaxification (but that's someone else's problem)
-
-    Step 2: input type and sets are selected, can now render real form
-    """
-    sets = map(int, request.GET.getlist('set'))
-    from amcat.scripts.query.input import INPUT_SCRIPTS
-    input_script = dict(INPUT_SCRIPTS)[inputtype]
-    form = input_script.get_options_form(project=project, sets=sets)
-    return render(request, 'navigator/project/query2.html', locals())
-
-@check(Project)
-def query3(request, project, inputtype):
-    """
-    Prototype 'step-by-step' render of query page
-    Needs javascriptification and ajaxification (but that's someone else's problem)
-
-    Step 3: We are go!
-    """
-    sets = map(int, request.GET.getlist('articlesets'))
-    from amcat.scripts.query.input import INPUT_SCRIPTS
-    script = dict(INPUT_SCRIPTS)[inputtype]
-    print request.POST
-    print sets
-    form = script.get_options_form(project, sets)(request.GET)
-    if form.is_valid():
-        raise Exception(form.cleaned_data)
-        result = script(form).run(None)
-        return HttpResponse(result, status=201, mimetype='text/plain')
-    else:
-        import simplejson
-        return HttpResponse(simplejson.dumps(form.errors), status=400, mimetype='application/json')
 
     
 @check(Project)

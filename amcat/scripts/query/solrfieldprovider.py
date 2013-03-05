@@ -1,3 +1,4 @@
+
 ###########################################################################
 #          (C) Vrije Universiteit, Amsterdam (the Netherlands)            #
 #                                                                         #
@@ -68,7 +69,7 @@ class SolrFieldProvider(FieldProvider):
         queries = cleaned_data.get(cls.label, "").strip()
         if queries:
             cleaned_data[cls.clean_label] = queries.split("\n")
-        elif cls.label in cleaned_data["Columns"]: 
+        elif cls.label in cleaned_data.get("Columns", []): 
             raise forms.ValidationError("Selected {cls.label} column without specifying any search terms"
                                         .format(**locals()))
             

@@ -78,16 +78,29 @@ class Tabulator(Processor):
     @classmethod
     def get_options_form(cls, output_fields):
         class CustomOptionsForm(Processor.options_form):
-            Rows = forms.ChoiceField(choices=[(f,f) for f in output_fields])
-            Columns =  forms.ChoiceField(choices=[(f,f) for f in output_fields])
+            def __init__(self, *args, **kargs):
+                Processor.options_form.__init__(self, *args, **kargs)
+                for key, field in cls.get_extra_fields(output_fields):
+                    self.fields[key] = field
         return CustomOptionsForm
+
+    @classmethod
+    def get_extra_fields(cls, output_fields):
+        yield 'Row', forms.ChoiceField(choices=[(f,f) for f in output_fields])
+        yield 'Column', forms.ChoiceField(choices=[(f,f) for f in output_fields])
+
+    @classmethod
+    def select_output_columns(cls, options):
+        return options['Row'], options['Column']
     
-    def _run(self, input_table, Rows, Columns):
+    def _run(self, input_table, Row, Column):
         row_col, col_col = None, None
         for col in input_table.getColumns():
-            if str(col) == Rows: row_col = col
-            if str(col) == Columns: col_col = col
-            
+            if str(col) == Row: row_col = col
+            if str(col) == Column: col_col = col
+
+        # TODO: check whether both columns are QuerySet column, 
+        #       and use a aggregate query instead of in-python aggregation
         return stream_tabulate(input_table, row_col, col_col)
 
 def stream_tabulate(table, row_column, col_column):
@@ -140,10 +153,10 @@ class TestTabulator(amcattest.PolicyTestCase):
     def test_tabulate(self):
         table = table3.ListTable([(1,20, 300), (1,30, 400), (2, 20, 500)], ["a", "b", "c"])
         form = Tabulator.get_options_form(output_fields = ["a","b","c"])
-        form = form(data=dict(Rows="a", Columns="b"), files=dict(input_table=table))
+        form = form(data=dict(Row="a", Column="b"), files=dict(input_table=table))
         tabulator = Tabulator(form)
         result = tabulator.run()
         self.assertEqual(sorted(result.getRows()), [1, 2])
         self.assertEqual(sorted(result.getColumns()), [20, 30])
         self.assertEqual(result.data[1, 20], 1)
-        
+        #print(result.output(rownames=True))

@@ -18,37 +18,55 @@
 ###########################################################################
 
 """
-Input Scripts for the Query Framework. An input script retrieves a
-list of articles (or other units) and fields from a specific
-information source, e.g. database, solr, or coding tables. All input
-scripts are based on the 'abstract' QueryInput class. Apart from the
-standard Script interface, a QueryInput has methods to provide
-information about the script, e.g. which fields (columns) it can
-yield and which sets are usable.
+Input Script for the Query Framework. The input script retrieves a
+(filtered) list of articles (rows) with selected fields
+(columns). This information is gathered and combined from different
+sources (database, solr, coding tables) using FieldProviders.
+
+The get_options_form should be called with a list of sets in order to
+determine the fields that can be used (depending whether the sets are
+indexed etc.)
 """
 
 from __future__ import unicode_literals, print_function, absolute_import
 from amcat.scripts.script import Script
 from django import forms
-from amcat.scripts.forms import ModelMultipleChoiceFieldWithIdLabel
-from amcat.models import Project, ArticleSet, Medium
-from amcat.scripts.query.field import article_field
+from amcat.models import ArticleSet, Article
+
+from amcat.scripts.query.articlemetafieldprovider import ArticleMetaFieldProvider
+from amcat.scripts.query.solrfieldprovider import SolrFieldProvider
+from amcat.scripts.query.fieldprovider import InputTable
+
+FIELD_PROVIDERS = [ArticleMetaFieldProvider, SolrFieldProvider]
+            
+class QueryInputForm(forms.Form):
+    articlesets = forms.ModelMultipleChoiceField(queryset=ArticleSet.objects.all())
+
+    def __init__(self, *args, **kargs):
+        project = kargs.pop('project', None)
+        super(QueryInputForm, self).__init__(*args, **kargs)
+        if project:
+            self.fields['articlesets'].queryset = project.all_articlesets()
+
+        sets = self.data.get('articlesets')
+        if sets:
+            for key, field in QueryInput.get_form_fields(sets):
+                self.fields[key] = field
+
+        if list(self.data.keys()) == ['articlesets']:
+            self.is_bound = False
+            self.fields['articlesets'].initial = sets
+            
+    def clean(self):
+        cleaned_data = super(QueryInputForm, self).clean()
+        cleaned_data = QueryInput.clean_form(cleaned_data)
+        return cleaned_data
 
 class QueryInput(Script):
-    """
-    'Abstract' base class for QueryInput scripts. 
-    """
+    options_form = QueryInputForm
     
     @classmethod
-    def get_sets(cls, project):
-        """
-        Return the sets of the given project that are suitable as input for this script.
-        By default, returns all fields in the project.
-        """
-        return project.all_articlesets()
-
-    @classmethod
-    def get_options_form(cls, project, sets, **options):
+    def get_form_fields(cls, sets):
         """Return the form with filter values specified for this project/sets
 
         By default, returns:
@@ -57,33 +75,37 @@ class QueryInput(Script):
         - plus a multichoice list of output fields from get_fields
         """
 
-        p = project
-        fields = cls.get_fields(project, sets)
-        fieldnames = [(field.label, field.label) for field in fields]
+        fieldnames = []
+        for provider in FIELD_PROVIDERS:
+            for label, field in provider.get_filter_fields(sets):
+                yield label, field
+                fieldnames += list(provider.get_output_fields(sets))
+                
+        yield "Columns", forms.MultipleChoiceField(choices=[(f,f) for f in fieldnames])
 
-        class Form(forms.Form):
-            project = forms.ModelChoiceField(queryset=Project.objects.filter(pk=p.id), initial=p)
-            project.widget = forms.HiddenInput()
-            # how to specify initial value for multi choice?
-            articlesets = forms.ModelMultipleChoiceField(queryset=ArticleSet.objects.filter(pk__in=sets), initial=" ".join(str(s) for s in sets))
-            articlesets.widget = forms.HiddenInput()
+    @classmethod
+    def clean_form(cls, cleaned_data):
+        """Perform additional cleaning on the (validated) form"""
+        for provider in FIELD_PROVIDERS:
+            provider.clean_form(cleaned_data)
+        return cleaned_data
 
-            Fields = forms.MultipleChoiceField(choices=fieldnames)
+    def run(self):
+        """
+        Collect the needed information
 
-            def clean_fields(self, cleanedData):
-                raise Exception(cleanedData)
-            
-
-        for field in fields:
-            if field.can_filter:
-                for label, form_field in field.get_form_fields(project, sets):
-                    # add to attribute and base_fields
-                    setattr(Form, label, form_field)
-                    Form.base_fields[label] = form_field
-
-
-        return Form
-
+        Start by making a queryset of the articles in the selected sets, and then
+        ask the field providers to add filters. 
+        """
+        columns = self.options.pop("Columns")
+        providers = [provider(self.options, columns) for provider in FIELD_PROVIDERS]
+        qs = Article.objects.filter(articlesets_set__in=self.options['articlesets'])
+        table = InputTable(qs)
+        for provider in providers:
+            provider.filter(table)
+        for provider in providers:
+            provider.add_columns(table)
+        return table
 
 ###########################################################################
 #                          U N I T   T E S T S                            #
@@ -91,7 +113,7 @@ class QueryInput(Script):
 
 from amcat.tools import amcattest
 
-class InputTestSetup(object):
+class TestInput(amcattest.PolicyTestCase):
     def setUp(self):
         self.p = amcattest.create_test_project()
         self.indexed_set, self.unindexed_set, self.coding_set = [amcattest.create_test_set(project=self.p, articles=5+i) for i in range(3)]
@@ -102,4 +124,10 @@ class InputTestSetup(object):
             s.save()
         self.job = amcattest.create_test_job(project=self.p, articleset=self.coding_set)
     
-    
+    def test_articlemeta(self):
+        a1, a2, a3 = self.indexed_set.articles.all()[:3]
+        q = QueryInput(articlesets = [self.indexed_set.id], Columns=["Section", "Date"], Medium=[a1.medium_id, a2.medium_id])
+        result = list(q.run().to_list())
+        self.assertEqual(len(result), 2)
+        self.assertEqual({r.Date for r in result}, {a1.date, a2.date})
+        

@@ -300,8 +300,6 @@ class FormTable(ObjectTable):
             return foreign_key
         return lambda x:getattr(x, name)
         
-        
-        
 class DictTable(Table):
     """
     Convenience subclass of Table that creates a dict to hold the cell values,

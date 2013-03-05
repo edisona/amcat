@@ -310,21 +310,20 @@ def articleset(request, project, aset):
 
 
 @check(Project)
-def query1(request, project):
+def query(request, project):
     """
     Prototype 'step-by-step' render of query page
     Needs javascriptification and ajaxification (but that's someone else's problem)
 
     Step 1: select input type and article sets
     """
-    def get_selection_form(s):
-        class form(Form):
-            from amcat.scripts.forms import ModelMultipleChoiceFieldWithIdLabel
-            set = ModelMultipleChoiceFieldWithIdLabel(queryset=s.get_sets(project))
-        return form()
-
-    from amcat.scripts.query.input import INPUT_SCRIPTS
-    inputs = [(name, get_selection_form(s)) for (name, s) in INPUT_SCRIPTS]
+    
+    from amcat.scripts.query.input import QueryInput
+    from amcat.tools.table import tableoutput
+    form = QueryInput.options_form(request.POST or None, project=project)
+    if form.is_valid():
+        result = QueryInput(form).run()
+        result_table = tableoutput.table2html(result)
     return render(request, 'navigator/project/query1.html', locals())
 
 @check(Project)

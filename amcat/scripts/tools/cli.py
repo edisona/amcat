@@ -42,14 +42,11 @@ def get_script(depth=2):
     module = classtools.get_calling_module(depth=depth)
     return classtools.get_class_from_module(module, Script)
 
-def run_cli(cls=None, handle_output=None, get_script_depth=2):
+def run_cli(cls=None, get_script_depth=2):
     """Handle command line interface invocation of this script"""
     amcatlogging.setup()
 
     if cls is None: cls = get_script(get_script_depth)
-
-    if handle_output is None:
-        handle_output = cls.output_type != None
 
     parser = argument_parser_from_script(cls)
     args = parser.parse_args()
@@ -59,29 +56,9 @@ def run_cli(cls=None, handle_output=None, get_script_depth=2):
         amcatlogging.debug_module(cls.__module__)
     
     instance = cls(options)
+    out = instance.run()
 
-    input = None
-    if cls.input_type in (file, str, unicode):
-        input = sys.stdin
-    if cls.input_type in (str, unicode):
-        input = input.read()
-    if cls.input_type == unicode:
-        encoding = chardet.detect(input)["encoding"]
-        log.info("Using encoding {encoding}".format(**locals()))
-        input = input.decode(encoding)
-        
-    out = instance.run(input)
-
-    if handle_output:
-        out = handleOutput(out, instance.output_type)
     return out
-
-def handleOutput(out, output_type):
-    cls = scriptmanager.findScript(output_type, str)
-    if not cls:
-        print(out)
-    else:
-        print cls().run(out)
 
 
 def argument_parser_from_script(script_class):

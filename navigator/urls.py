@@ -86,7 +86,7 @@ urlpatterns = patterns(
     url(r'^project/(?P<id>[0-9]+)$', 'navigator.views.project.view', name='project'),
     url(r'^project/(?P<id>[0-9]+)/articlesets$', 'navigator.views.project.articlesets', name='project-articlesets'),
 
-    url(r'^project/(?P<id>[0-9]+)/query$', 'navigator.views.project.query1', name='project-query1'),
+    url(r'^project/(?P<id>[0-9]+)/query$', 'navigator.views.project.query', name='project-query'),
     url(r'^project/(?P<id>[0-9]+)/query/(?P<inputtype>\w+)$', 'navigator.views.project.query2', name='project-query2'),
     url(r'^project/(?P<id>[0-9]+)/query/(?P<inputtype>\w+)/result$', 'navigator.views.project.query3', name='project-query3'),
 

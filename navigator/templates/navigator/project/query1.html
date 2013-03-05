@@ -5,14 +5,16 @@
 {% block content %}
 <h1>Tim the ugly Query Wizard, step 1 -- select input type and article sets</h1>
 <div>
-  {% for type, form in inputs %}
-  <hr />
-  <h2> {{ type }} </h2>
-  <form method="GET" action="{% url project-query2 id=project.id inputtype=type %}">
+  <form method="POST" action="{% url project-query id=project.id %}">
+  <table>
     {{ form }}
-    <br /><input type="submit" value="Next" />
+    <tr><td><input type="submit" value="Next" /></tr></td>
+</table>
   </form>
-  {% endfor %}b
 </div>
+
+<hr>
+{{ result }}
+{{ result_table|safe }}
 
 {% endblock %}

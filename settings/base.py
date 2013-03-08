@@ -138,8 +138,6 @@ TEMPLATE_DIRS = (
 )
 
 INSTALLED_APPS = [
-    'sentry',
-    'sentry.client',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -205,6 +203,9 @@ REST_FRAMEWORK = {
 
 ## SETUP LOGGER ##
 if not DEBUG:
+    INSTALLED_APPS.append('sentry')
+    INSTALLED_APPS.append('sentry.client')
+
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", '')
     EMAIL_PORT = os.environ.get("DJANGO_EMAIL_PORT", 587)

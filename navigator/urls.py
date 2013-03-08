@@ -26,10 +26,11 @@ from navigator.views import user
 from navigator.views import plugin
 
 import navigator.views.project.urls
+import navigator.views.user.details
+import navigator.views.user.lists
 
 specific_user_patterns = patterns('',
-    url(r'$', user.view, name='user'),
-    url(r'edit$', user.edit, name='user-edit'),
+    url(r'$', user.details.UserDetailView.as_view(), name='user'),
 ) 
 
 user_patterns = patterns('',
@@ -46,14 +47,14 @@ user_patterns = patterns('',
     }),
 
     # "Simple" actions
-    url(r'^add-submit$', 'navigator.views.user.add_submit', name='user-add-submit'),
-    url(r'^self$', user.view_self),
-    url(r'^add$', user.add, name="user-add"),
+    #url(r'^add-submit$', 'navigator.views.user.add_submit', name='user-add-submit'),
+    #url(r'^self$', user.view_self, "user-self"),
+    #url(r'^add$', user.add, name="user-add"),
 
     # Report
-    url(r'^active-affiliated$', user.my_affiliated_active, name="affiliated-users"),
-    url(r'^all-affiliated$', user.my_affiliated_all, name="all-affiliated-users"),
-    url(r'^all$', user.all, name='all-users'),
+    url(r'^active-affiliated$', user.lists.AllAffiliatedUsers.as_view(), name="affiliated-users"),
+    url(r'^all-affiliated$', user.lists.AllActiveAffiliatedUsers.as_view(), name="all-affiliated-users"),
+    url(r'^all$', user.lists.AllUsers.as_view(), name='all-users'),
 )
 
 specific_codingjob_patterns = patterns('',

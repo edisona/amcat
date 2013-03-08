@@ -16,28 +16,43 @@
 # You should have received a copy of the GNU Affero General Public        #
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
-from api.rest import Datatable
-from api.rest.resources import MediumResource
-from amcat.models.medium import Medium
 
-import logging; log = logging.getLogger(__name__)
+"""
+This module contains all views which render users-lists.
+"""
+
+from api.rest import Datatable
+from api.rest.resources import UserResource
 
 from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse_lazy
 
-from navigator.menu import get_menu
+class BaseUserView(TemplateView):
+    """Class used for menu rendering and subclassing"""
+    template = "navigator/user/table.html"
+    menu_item = ("Users", reverse_lazy("affiliated-users"))
 
-class IndexView(TemplateView):
-    template_name = "navigator/report/index.html"
+class AllUsers(BaseUserView):
+    menu_parent = BaseUserView
+    menu_item = ("All users", reverse_lazy("all-users"))
 
-class MediaView(TemplateView):
-    menu_item = ("Media", reverse_lazy("media"))
-    template_name = "navigator/report/media.html"
+    def _get_table(self, **filters):
+        return Datatable(UserResource).filter(**filters)
 
     def get_context_data(self, **kwargs):
-        get_menu(self.request)
+        return dict(table=self._get_table())
 
-        return { 
-            "can_add" : Medium.can_create(self.request.user),
-            "media" : Datatable(MediumResource)
-        }
+class AllAffiliatedUsers(AllUsers):
+    menu_item = ("All affiliated users", reverse_lazy("all-affiliated-users"))
+
+    def _get_table(self, **filters):
+        return super(AllAffiliatedUsers, self)._get_table(
+            userprofile__affiliation=request.user.userprofile.affiliation, **filters
+        )
+
+class AllActiveAffiliatedUsers(AllAffiliatedUsers):
+    menu_item = ("Active affiliated users", reverse_lazy("affiliated-users"))
+
+    def _get_table(self, **filters):
+        return super(AllAffiliatedUsers, self)._get_table(is_active=True)
+

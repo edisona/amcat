@@ -17,27 +17,24 @@
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 from api.rest import Datatable
-from api.rest.resources import MediumResource
-from amcat.models.medium import Medium
+from api.rest.resources import UserResource, ProjectResource
 
-import logging; log = logging.getLogger(__name__)
+from django.views.generic.edit import FormView
+from django.core.urlresolvers import reverse, reverse_lazy
 
-from django.views.generic import TemplateView
-from django.core.urlresolvers import reverse_lazy
+from navigator.forms import UserForm
+from navigator.menu import reverse_with
 
-from navigator.menu import get_menu
+class BaseUserDetailView(FormView):
+    menu_item = ("User", None)
 
-class IndexView(TemplateView):
-    template_name = "navigator/report/index.html"
+class UserDetailView(BaseUserDetailView):
+    template = "navigator/user/view.html"
+    menu_parent = BaseUserDetailView
+    menu_item = ("View", reverse_with("user", "user_id"))
+    form_class = UserForm
 
-class MediaView(TemplateView):
-    menu_item = ("Media", reverse_lazy("media"))
-    template_name = "navigator/report/media.html"
+    def get_success_url():
+        return reverse("user", kwargs=dict(user_id=self.request.user.id))
 
-    def get_context_data(self, **kwargs):
-        get_menu(self.request)
 
-        return { 
-            "can_add" : Medium.can_create(self.request.user),
-            "media" : Datatable(MediumResource)
-        }

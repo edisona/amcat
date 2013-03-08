@@ -144,7 +144,12 @@ def to_list(func):
     """
     return wrapped(list)(func)
 
-
+def to_tuple(func):
+    """
+    This decorator puts the result of a (generator) function in a tuple.
+    """
+    return wrapped(tuple)(func)
+    
 def log_error():
     try:
         yield

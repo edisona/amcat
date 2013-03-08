@@ -24,13 +24,8 @@ def _redirect_login(request):
     """
     Redirect a successful login
     """
-    next1 = request.REQUEST.get("next")
-    if next1 is not None:
-        return redirect(next)
-
-    # Redirect to frontpage
-    return redirect("navigator.views.report.index")
-
+    next = request.REQUEST.get("next")
+    return redirect(next or reverse("index"))
 
 def login(request):
     """

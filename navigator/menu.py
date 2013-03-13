@@ -48,6 +48,9 @@ from amcat.tools.classtools import import_attribute
 
 from django.views.generic import View
 from django.utils.functional import Promise
+from django.core.urlresolvers import resolve
+
+import logging; log = logging.getLogger(__name__)
 
 INSPECT_MODULES = ["navigator.views"]
 
@@ -62,12 +65,29 @@ def reverse_with(view, *args, **kwargs):
     return (view, args, kwargs)
 
 ### MENU RENDERING ###
+def get_submenu(menu, level):
+    """
+    Get a sublevel of the given menu (probably returned by get_menu()). Level
+    must be a tuple. For example:
+
+    menu: [{"name" : "Users", ...}, { .. }]
+    level: ("Users", "Affiliated")
+
+    Returns None if level is not found.
+    """
+    # Base case
+    if not level: return menu
+
+    for sub in menu:
+        if sub["name"] == level[0]:
+            return get_submenu(sub["children"], level[1:])
+
 def get_menu(request):
     """
     Get a menu structure based in imported views, filled in according to the
     current request.
     """
-    return _get_menu(request, get_empty_menu())
+    return _get_menu(request, tuple(get_empty_menu()))
 
 def get_empty_menu(views=None):
     """Returns an iterator with dictionaries, each representing a menu-item.
@@ -100,7 +120,7 @@ def _get_menu(request, menu):
 def _get_url(request, url):
     # To resolve reverse_with urls, we neeed the kwargs of the currently
     # requested url.
-    path_kwargs = resolve(request.META["PATH_INFO"])
+    path_kwargs = resolve(request.META["PATH_INFO"]).kwargs
     path_keys = set(path_kwargs.keys())
 
     if isinstance(url, tuple):
@@ -110,6 +130,7 @@ def _get_url(request, url):
         if (set(args) - path_keys):
             # There are arguments which are requested for this menu item
             # to resolve, which are not in the url.
+            log.debug("Could not resolve {url} with only {path_keys} available".format(**locals()))
             return
 
         # We can resolve it!
@@ -137,4 +158,79 @@ def _get_views(inspect=INSPECT_MODULES):
         for view in _get_django_views(mod):
             if hasattr(view, "menu_item"):
                 yield view
+
+###########################################################################
+#                          U N I T   T E S T S                            #
+###########################################################################
+
+from amcat.tools import amcattest
+from django.core.urlresolvers import reverse_lazy
+
+class _RootTestView(View):
+    menu_item = ("Root", "/test/")
+
+class MenuTest(amcattest.PolicyTestCase):
+    class NoMenuView(object):
+        pass
+
+    class ReverseWithView(View):
+        menu_parent = _RootTestView
+        menu_item = ("Reverse", reverse_with("index", "article_id"))
+
+    class LazyView(View):
+        menu_parent = _RootTestView
+        menu_item = ("Lazy", reverse_lazy("index"))
+
+    def setUp(self):
+        global _get_django_views
+        self._get_django_views = _get_django_views
+        _get_django_views = lambda x: [_RootTestView, self.NoMenuView, self.ReverseWithView, self.LazyView]
+
+    def tearDown(self):
+        global _get_django_views
+        _get_django_views = self._get_django_views
+
+    def test_get_views(self):
+        self.assertEquals(3, len(list(_get_views())))
+        self.assertTrue(self.NoMenuView not in _get_views())
+        self.assertTrue(_RootTestView in _get_views())
+
+    def test_get_hierarchy(self):
+        roots = tuple(_get_hierarchy())
+        children = [c[0] for c in roots[0][1]]
+
+        self.assertEquals(_RootTestView, roots[0][0])
+        self.assertEquals(2, len(children))
+        self.assertTrue(self.ReverseWithView in children)
+        self.assertTrue(_RootTestView not in children)
+
+    def test_get_empty_menu(self):
+        roots = tuple(get_empty_menu())
+        root = roots[0]
+
+        self.assertEquals(1, len(roots))
+        self.assertEquals("Root", root["name"])
+        self.assertEquals(2, len(root["children"]))
+
+        for child in root["children"]:
+            # Check whether get_empty_menu resolves promises..
+            self.assertFalse(isinstance(child["url"], Promise))
+
+    def test_get_menu(self):
+        from django.test.client import RequestFactory
+        req = RequestFactory().get(reverse_lazy("index"))
+
+        roots = tuple(get_menu(req))
+        children = roots[0]["children"]
+
+        # Of course, no reverse_with could be resolved
+        self.assertFalse(all(c["url"] for c in children))
+
+    def test_get_submenu(self):
+        menu = tuple(get_empty_menu())
+
+        self.assertEquals(1, len(get_submenu(menu, ())))
+        self.assertEquals(2, len(get_submenu(menu, ("Root",))))
+        self.assertEquals(0, len(get_submenu(menu, ("Root", "Lazy"))))
+        self.assertEquals(None, get_submenu(menu, ("Non-existent",)))
 

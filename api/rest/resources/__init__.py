@@ -30,12 +30,13 @@ from api.rest.resources.amcatresource import AmCATResource
 from api.rest.resources.project import ProjectResource
 from api.rest.resources.user import UserResource
 from api.rest.resources.codebook import CodebookHierarchyResource
+from api.rest.resources.codingjob import CodingJobResource
 
 
 MODELS = ['Article', 'ArticleSet', 
           'Role', 'ProjectRole',
           'Medium', 'Language',
-          'CodingJob', 'CodingSchema', 'Codebook', 'CodingSchemaField',
+          'CodingSchema', 'Codebook', 'CodingSchemaField',
           'CodebookCode', 'CodebookBase', 'Analysis', 'Label', 'CodingSchemaFieldType',
           'django.contrib.auth.models.Group', 'django.contrib.auth.models.Permission',
           'Plugin', 'Scraper', 'PluginType'

@@ -41,12 +41,11 @@ An example could be:
 """
 
 from inspect import isclass
-from itertools import groupby
 
 from amcat.tools import toolkit
 from amcat.tools.classtools import import_attribute
 
-from django.views.generic import View
+from django.views.generic import View, TemplateView
 from django.utils.functional import Promise
 from django.core.urlresolvers import resolve
 
@@ -63,6 +62,40 @@ def reverse_with(view, *args, **kwargs):
     url.
     """
     return (view, args, kwargs)
+
+def get_path(view):
+    """Get the menu-path to the current view. For example:
+
+        ("Users", "Affiliated Users")
+
+    with:
+
+      view = AffiliatedUsersView
+
+    """
+    return tuple(reversed(_get_path(view)))
+
+class MenuView(TemplateView):
+    """
+    MenuView contains two extra properties: menu_parent and menu_item. It is
+    furthermore a TemplateView, which inserts a context-variable menu. This
+    variable is a tuple with the first, second, .. menu levels.
+    """
+    menu_parent = None
+    menu_item = None
+
+    @toolkit.to_tuple
+    def _get_menu_levels(self):
+        """
+
+        """
+        menu = get_menu(self.request)
+
+
+    def get_context_data(self, *args, **kwargs):
+        ctx = super(MenuView, self).get_context_data(*args, **kwargs)
+        ctx.update({"menu" : tuple(self._get_menu_levels())})
+        return ctx
 
 ### MENU RENDERING ###
 def get_submenu(menu, level):
@@ -108,6 +141,10 @@ def get_empty_menu(views=None):
         }
 
 ### PRIVATE HELPER FUNCTIONS ###
+def _get_path(view):
+    return (view.menu_item[0],) + (_get_path(view.menu_parent)
+                if view.menu_parent else ())
+
 def _get_menu(request, menu):
     for sub in menu:
         sub.update({
@@ -143,20 +180,20 @@ def _get_url(request, url):
 
 def _get_hierarchy(views=None, parent=None):
     views = tuple(_get_views()) if views is None else views
-    children = (v for v in views if getattr(v, "menu_parent", None) == parent)
+    children = (v for v in views if v.menu_parent == parent)
 
     for view in children:
         yield (view, _get_hierarchy(views, view))
         
-def _get_django_views(module):
+def _get_classes(module):
     attrs = (getattr(module, a) for a in dir(module))
-    return (a for a in attrs if isclass(a) and issubclass(a, View))
+    return (a for a in attrs if isclass(a))
 
 def _get_views(inspect=INSPECT_MODULES):
-    """Get all views with either a menu_parent or menu_item property defined"""
+    """Get all views which inherit from MenuView"""
     for mod in (import_attribute(m) for m in inspect):
-        for view in _get_django_views(mod):
-            if hasattr(view, "menu_item"):
+        for view in _get_classes(mod):
+            if issubclass(view, MenuView):
                 yield view
 
 ###########################################################################
@@ -166,29 +203,31 @@ def _get_views(inspect=INSPECT_MODULES):
 from amcat.tools import amcattest
 from django.core.urlresolvers import reverse_lazy
 
-class _RootTestView(View):
+class _RootTestView(MenuView):
+    """This view is not used for anything but testing"""
     menu_item = ("Root", "/test/")
 
 class MenuTest(amcattest.PolicyTestCase):
-    class NoMenuView(object):
+    """This test assumes there is an url with name=index"""
+    class NoMenuView(View):
         pass
 
-    class ReverseWithView(View):
+    class ReverseWithView(MenuView):
         menu_parent = _RootTestView
         menu_item = ("Reverse", reverse_with("index", "article_id"))
 
-    class LazyView(View):
+    class LazyView(MenuView):
         menu_parent = _RootTestView
         menu_item = ("Lazy", reverse_lazy("index"))
 
     def setUp(self):
-        global _get_django_views
-        self._get_django_views = _get_django_views
-        _get_django_views = lambda x: [_RootTestView, self.NoMenuView, self.ReverseWithView, self.LazyView]
+        global _get_classes
+        self._get_classes = _get_classes
+        _get_classes = lambda x: [_RootTestView, self.NoMenuView, self.ReverseWithView, self.LazyView]
 
     def tearDown(self):
-        global _get_django_views
-        _get_django_views = self._get_django_views
+        global _get_classes
+        _get_classes = self._get_classes
 
     def test_get_views(self):
         self.assertEquals(3, len(list(_get_views())))
@@ -233,4 +272,8 @@ class MenuTest(amcattest.PolicyTestCase):
         self.assertEquals(2, len(get_submenu(menu, ("Root",))))
         self.assertEquals(0, len(get_submenu(menu, ("Root", "Lazy"))))
         self.assertEquals(None, get_submenu(menu, ("Non-existent",)))
+
+    def test_get_path(self):
+        self.assertEquals(get_path(self.LazyView), ("Root", "Lazy"))
+        self.assertEquals(get_path(_RootTestView), ("Root",))
 

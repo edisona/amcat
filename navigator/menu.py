@@ -63,18 +63,6 @@ def reverse_with(view, *args, **kwargs):
     """
     return (view, args, kwargs)
 
-def get_path(view):
-    """Get the menu-path to the current view. For example:
-
-        ("Users", "Affiliated Users")
-
-    with:
-
-      view = AffiliatedUsersView
-
-    """
-    return tuple(reversed(_get_path(view)))
-
 class MenuView(TemplateView):
     """
     MenuView contains two extra properties: menu_parent and menu_item. It is
@@ -84,17 +72,28 @@ class MenuView(TemplateView):
     menu_parent = None
     menu_item = None
 
-    @toolkit.to_tuple
-    def _get_menu_levels(self):
-        """
+    def get_menu(self):
+        return _get_menu(self.request, tuple(get_empty_menu()))
 
-        """
-        menu = get_menu(self.request)
+    def get_menu_levels(self):
+        menu = self.get_menu()
 
+    @classmethod
+    def _get_path(cls):
+        return (cls.menu_item[0],) + (cls.menu_parent._get_path() if cls.menu_parent else ())
+
+    @classmethod
+    def get_path(cls):
+        """
+        Get the menu-path to the current view. For example:
+
+            ("Users", "Affiliated Users")
+        """
+        return tuple(reversed(cls._get_path()))
 
     def get_context_data(self, *args, **kwargs):
         ctx = super(MenuView, self).get_context_data(*args, **kwargs)
-        ctx.update({"menu" : tuple(self._get_menu_levels())})
+        ctx.update({"menu" : tuple(self.get_menu_levels())})
         return ctx
 
 ### MENU RENDERING ###
@@ -115,12 +114,6 @@ def get_submenu(menu, level):
         if sub["name"] == level[0]:
             return get_submenu(sub["children"], level[1:])
 
-def get_menu(request):
-    """
-    Get a menu structure based in imported views, filled in according to the
-    current request.
-    """
-    return _get_menu(request, tuple(get_empty_menu()))
 
 def get_empty_menu(views=None):
     """Returns an iterator with dictionaries, each representing a menu-item.
@@ -141,10 +134,6 @@ def get_empty_menu(views=None):
         }
 
 ### PRIVATE HELPER FUNCTIONS ###
-def _get_path(view):
-    return (view.menu_item[0],) + (_get_path(view.menu_parent)
-                if view.menu_parent else ())
-
 def _get_menu(request, menu):
     for sub in menu:
         sub.update({

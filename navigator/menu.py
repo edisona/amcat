@@ -115,6 +115,7 @@ def get_submenu(menu, level):
             return get_submenu(sub["children"], level[1:])
 
 
+@toolkit.to_tuple
 def get_empty_menu(views=None):
     """Returns an iterator with dictionaries, each representing a menu-item.
     
@@ -248,7 +249,7 @@ class MenuTest(amcattest.PolicyTestCase):
         from django.test.client import RequestFactory
         req = RequestFactory().get(reverse_lazy("index"))
 
-        roots = tuple(get_menu(req))
+        roots = tuple(_get_menu(req, get_empty_menu()))
         children = roots[0]["children"]
 
         # Of course, no reverse_with could be resolved
@@ -263,6 +264,6 @@ class MenuTest(amcattest.PolicyTestCase):
         self.assertEquals(None, get_submenu(menu, ("Non-existent",)))
 
     def test_get_path(self):
-        self.assertEquals(get_path(self.LazyView), ("Root", "Lazy"))
-        self.assertEquals(get_path(_RootTestView), ("Root",))
+        self.assertEquals(self.LazyView.get_path(), ("Root", "Lazy"))
+        self.assertEquals(_RootTestView.get_path(), ("Root",))
 

@@ -25,7 +25,6 @@ from api.rest import Datatable
 from navigator.utils.auth import check
 from amcat.models.user import User
 
-from settings.menu import CODINGJOB_MENU
 from api.rest.resources import CodingJobResource
 
 @check(User, args='coder_id', args_map={'coder_id' : 'id'})
@@ -63,3 +62,9 @@ def all(request, coder):
     })
 
     return render(request, 'navigator/report/codingjobs.html', ctx)
+
+def my_all(request):
+    return all(request, coder_id=request.user.id)
+
+def my_index(request):
+    return index(request, coder_id=request.user.id)

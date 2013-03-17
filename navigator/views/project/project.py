@@ -42,8 +42,6 @@ from api.rest.resources import CodebookBaseResource, CodebookCodeResource
 from api.rest.resources import CodingSchemaFieldResource
 from api.rest.resources import PluginResource, ScraperResource
 
-from settings.menu import PROJECT_MENU, PROJECT_OVERVIEW_MENU
-
 from django.shortcuts import render, redirect
 from django.core.urlresolvers import reverse
 from django.core.exceptions import PermissionDenied
@@ -82,7 +80,7 @@ PROJECT_READ_WRITE = Role.objects.get(projectlevel=True, label="read/write").id
 import logging; log = logging.getLogger(__name__)
 
 def table_view(request, context, table, selected=None, overview=False,
-               menu=PROJECT_MENU, template=None, **kargs):
+               menu=None, template=None, **kargs):
     """
     Renders simple page containing only a table, within a projects tab.
 

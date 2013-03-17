@@ -27,32 +27,22 @@ from api.rest.resources import UserResource
 from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse_lazy
 
-class BaseUserView(TemplateView):
-    """Class used for menu rendering and subclassing"""
-    template = "navigator/user/table.html"
-    menu_item = ("Users", reverse_lazy("affiliated-users"))
-
-class AllUsers(BaseUserView):
-    menu_parent = BaseUserView
-    menu_item = ("All users", reverse_lazy("all-users"))
-
+class AllUsers(TemplateView):
     def _get_table(self, **filters):
         return Datatable(UserResource).filter(**filters)
 
     def get_context_data(self, **kwargs):
-        return dict(table=self._get_table())
+        ctx = super(AllUsers, self).get_context_data(**kwargs)
+        ctx.update({"table":self._get_table()})
+        return ctx
 
 class AllAffiliatedUsers(AllUsers):
-    menu_item = ("All affiliated users", reverse_lazy("all-affiliated-users"))
-
     def _get_table(self, **filters):
         return super(AllAffiliatedUsers, self)._get_table(
             userprofile__affiliation=request.user.userprofile.affiliation, **filters
         )
 
 class AllActiveAffiliatedUsers(AllAffiliatedUsers):
-    menu_item = ("Active affiliated users", reverse_lazy("affiliated-users"))
-
     def _get_table(self, **filters):
         return super(AllAffiliatedUsers, self)._get_table(is_active=True)
 

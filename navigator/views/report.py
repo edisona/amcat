@@ -25,19 +25,21 @@ import logging; log = logging.getLogger(__name__)
 from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse_lazy
 
-from navigator.menu import get_menu
+from navigator.menu import MenuView
 
 class IndexView(TemplateView):
     template_name = "navigator/report/index.html"
 
-class MediaView(TemplateView):
+class MediaView(MenuView):
     menu_item = ("Media", reverse_lazy("media"))
     template_name = "navigator/report/media.html"
 
     def get_context_data(self, **kwargs):
-        get_menu(self.request)
-
-        return { 
+        ctx = super(MediaView, self).get_context_data(**kwargs)
+        ctx.update({
             "can_add" : Medium.can_create(self.request.user),
             "media" : Datatable(MediumResource)
-        }
+        })
+
+        return ctx
+

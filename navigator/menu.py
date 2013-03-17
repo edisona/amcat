@@ -21,39 +21,175 @@
 This module contains all logic which is needed to render all menu's within
 the navigator. Since 3.2 it is really simplified, and hopefully well-
 documented.
-
-The main idea is very simple: there are primary, secundary, .. menu's, which
-all have a items (menu-items). All these items point to a resource, somewhere
-internal or external.
-
-= Implementing =
-In order to implement a menu-item on your view you need to do two things:
-
- 1) Define menu_parent and menu_item
- 2) Import views to this menu
-
-An example could be:
-
- class TestView(View):
-    menu_parent = SomeView
-    menu_item = ("My project", reverse_lazy("test"))
-
 """
 
-from inspect import isclass
+from collections import OrderedDict
+from itertools import chain
 
-from amcat.tools import toolkit
-from amcat.tools.classtools import import_attribute
+from amcat.models import Role, Privilege, Privilege
+from amcat.models.authorisation import check
 
-from django.views.generic import View, TemplateView
-from django.utils.functional import Promise
-from django.core.urlresolvers import resolve
+from django.conf.settings import NAVIGATOR_MENU
+from django.core.urlresolvers import reverse, resolve, reverse_lazy
+from django.views.generic.base import TemplateView
 
 import logging; log = logging.getLogger(__name__)
 
-INSPECT_MODULES = ["navigator.views"]
+PROJECT_ID = "project_id"
 
-### MENU TOOLS ###
+### VIEWS ###
+class MenuView(TemplateView):
+    def get_context_data(self, **kwargs):
+        ctx = super(MenuView, self).get_context_data(**kwargs)
+        ctx.update({"menu":tuple(generate_menu(self.request))})
+        return ctx
+
+
+### GENERIC NAVIGATOR_MENU ITEMS ###
+class MenuItem(object):
+    """
+    A MenuItem represents an item in a menu (what's in a name?). It takes options
+    which determine whether it is visible, under specific circumstances.
+    """
+    def __init__(self, label, url=None, privilege=None, role=None):
+        self.label = label
+        self.url = url
+        self.privilege = privilege
+        self.role = role
+
+    def __repr__(self):
+        return "<MenuItem: {label}>".format(**self.__dict__)        
+
+    def _check_privilege(self, user, project):
+        return user.haspriv(self.privilege, project) if self.privilege else True
+
+    def _check_role(self, user):
+        return True
+
+    def is_visible(self, user=None, project=None):
+        """Checks whether this item is visible for logged in user."""
+        return self._check_privilege(user, project) and self._check_role(user)
+
+    def is_selected(self, request):
+        """
+        Returns True if, based on the current request, this menu-item is
+        selected.
+        """
+        url = self.get_url(request)
+        cur_url = request.META["PATH_INFO"]
+
+        if url == cur_url:
+            return True
+            
+        if url is None:
+            return False
+
+        # We add a forward slash to prevent collisions with 'wrong' urls.
+        url = url if url.endswith("/") else "{}/".format(url)
+        return cur_url.startswith(url)
+
+    def get_url(self, request=None):
+        # Try to reverse given url, if it does not look like an url
+        if isinstance(self.url, basestring) and self.url.find("/") == -1:
+            return reverse(self.url)
+
+        return self.url
+
+    def to_dict(self, request, project=None):
+        """Converts this item in to a dictionary, based on current request"""
+        path_kwargs = resolve(request.META["PATH_INFO"]).kwargs
+        if PROJECT_ID in path_kwargs.keys():
+            project = Project.objects.get(id=path_kwargs[PROJECT_ID])
+
+        return {
+            "is_selected" : self.is_selected(request),
+            "is_visible" : self.is_visible(request.user, project),
+            "url" : self.get_url(request)
+        }
+
+class MenuReverseItem(MenuItem):
+    """
+    This is a menu-item which needs parameters present in the url to resolve its
+    destination. It takes the same arguments a MenuItem, but the url-arugment needs
+    to be generated using reverse_with().
+    """
+    def get_url(self, request):
+        # We don't need to concern ourselves with how MenuItem stores the given url
+        url = super(MenuReverseItem, self).get_url(request)
+
+        # To resolve reverse_with urls, we neeed the kwargs of the currently
+        # requested url.
+        path_kwargs = resolve(request.META["PATH_INFO"]).kwargs
+        path_keys = set(path_kwargs.keys())
+
+        if isinstance(url, tuple):
+            # This is a reverse_with url
+            view, args, kwargs = url
+
+            if (set(args) - path_keys):
+                # There are arguments which are requested for this menu item
+                # to resolve, which are not in the url.
+                log.debug("Could not resolve {url} with only {path_keys} available".format(**locals()))
+                return
+
+            # We can resolve it!
+            kwargs.update({ a : path_kwargs.get(a) for a in args})
+            return reverse(view, kwargs=kwargs)
+
+        # We don't know this type, probably just a string (URL)
+        return url
+
+### SPECIFIC NAVIGATOR_MENU ITEMS ###
+class MyDetails(MenuItem):
+    def __init__(self, label):
+        super(MenuItem, self).__init__(label)
+
+    def is_selected(self, request):
+        user_id = resolve(request.META["PATH_INFO"]).kwargs.get("user_id", None)
+        return user_id == request.user.id
+
+    def get_url(self, request):
+        return reverse("user", kwargs=dict(user_id=request.user.id))
+    
+### TOOLS ###
+def generate_menu(request):
+    """
+    This function returns an iterator which yields tuples with dictionaries, with
+    the latter representing menu-items. As the main menu is always visible, the 
+    first tuple yielded will be formatted like:
+
+     { category1 : (item1, item2),
+       category2 : ... }
+
+    instead of the usual:
+
+     (item1, item2)
+
+    Each item is a dictionary with the keys: is_selected, is_visible and url.
+    """
+    yield OrderedDict(_generate_main_menu(request))
+
+    # Finding selected menu item..
+    items = _get_children_selected(request, chain(*NAVIGATOR_MENU.values()))
+    for submenu in _generate_submenus(request, items):
+        yield submenu
+
+def _get_children_selected(request, submenu):
+    for item, children in submenu:
+        if item.is_selected(request):
+            return children
+    
+def _generate_main_menu(request):
+    for cat, items in NAVIGATOR_MENU.items():
+        yield (cat.label, tuple(item.to_dict(request) for (item, children) in items))
+
+def _generate_submenus(request, items=None):
+    if items is None:
+        return ()
+
+    return (((item.to_dict(request) for item in items),) 
+        + _generate_submenus(request, _get_children_selected(request, items)))
+
 def reverse_with(view, *args, **kwargs):
     """
     An url will be generated using django's reverse() with the provided kwargs
@@ -63,207 +199,47 @@ def reverse_with(view, *args, **kwargs):
     """
     return (view, args, kwargs)
 
-class MenuView(TemplateView):
-    """
-    MenuView contains two extra properties: menu_parent and menu_item. It is
-    furthermore a TemplateView, which inserts a context-variable menu. This
-    variable is a tuple with the first, second, .. menu levels.
-    """
-    menu_parent = None
-    menu_item = None
+### DEFINITION ###
+PROJECTS_MENU = (
 
-    def get_menu(self):
-        return _get_menu(self.request, tuple(get_empty_menu()))
+)
 
-    def get_menu_levels(self):
-        menu = self.get_menu()
+USERS_MENU = (
+    (MenuItem("Active affiliated users", "affiliated-users"), None),
+    (MenuItem("All affiliated users", "all-affiliated-users"), None),
+    (MenuItem("All users", "all-users", privilege=(
+        Privilege.objects.get(label="view_users", role__projectlevel=False)
+    )), None),
+)
 
-    @classmethod
-    def _get_path(cls):
-        return (cls.menu_item[0],) + (cls.menu_parent._get_path() if cls.menu_parent else ())
+PLUGINS_MENU = (
 
-    @classmethod
-    def get_path(cls):
-        """
-        Get the menu-path to the current view. For example:
+)
 
-            ("Users", "Affiliated Users")
-        """
-        return tuple(reversed(cls._get_path()))
+CODINGJOBS_MENU = (
 
-    def get_context_data(self, *args, **kwargs):
-        ctx = super(MenuView, self).get_context_data(*args, **kwargs)
-        ctx.update({"menu" : tuple(self.get_menu_levels())})
-        return ctx
+)
 
-### MENU RENDERING ###
-def get_submenu(menu, level):
-    """
-    Get a sublevel of the given menu (probably returned by get_menu()). Level
-    must be a tuple. For example:
-
-    menu: [{"name" : "Users", ...}, { .. }]
-    level: ("Users", "Affiliated")
-
-    Returns None if level is not found.
-    """
-    # Base case
-    if not level: return menu
-
-    for sub in menu:
-        if sub["name"] == level[0]:
-            return get_submenu(sub["children"], level[1:])
-
-
-@toolkit.to_tuple
-def get_empty_menu(views=None):
-    """Returns an iterator with dictionaries, each representing a menu-item.
-    
-    TODO: This function can be cached per Python session. It needs to be
-    serialised and deserialised, because the returned objects are used
-    and modified in other functions."""
-    views = _get_hierarchy() if views is None else views
-
-    for view, children in views:
-        dest = view.menu_item[1]
-
-        yield {
-            "name" : view.menu_item[0],
-            # Resolve Django Promises so this function can be cached.
-            "url" : str(dest) if isinstance(dest, Promise) else dest,
-            "children" : tuple(get_empty_menu(children))
-        }
-
-### PRIVATE HELPER FUNCTIONS ###
-def _get_menu(request, menu):
-    for sub in menu:
-        sub.update({
-            "url" : _get_url(request, sub["url"]),
-            "children" : _get_menu(request, sub["children"])
-        })
-
-    return menu
-
-def _get_url(request, url):
-    # To resolve reverse_with urls, we neeed the kwargs of the currently
-    # requested url.
-    path_kwargs = resolve(request.META["PATH_INFO"]).kwargs
-    path_keys = set(path_kwargs.keys())
-
-    if isinstance(url, tuple):
-        # This is a reverse_with url
-        view, args, kwargs = url
-
-        if (set(args) - path_keys):
-            # There are arguments which are requested for this menu item
-            # to resolve, which are not in the url.
-            log.debug("Could not resolve {url} with only {path_keys} available".format(**locals()))
-            return
-
-        # We can resolve it!
-        kwargs.update({ a : path_kwargs.get(a) for a in args})
-        return reverse(view, kwargs=kwargs)
-
-    # We don't know this type, probably just a string (URL)
-    return url
-
-
-def _get_hierarchy(views=None, parent=None):
-    views = tuple(_get_views()) if views is None else views
-    children = (v for v in views if v.menu_parent == parent)
-
-    for view in children:
-        yield (view, _get_hierarchy(views, view))
-        
-def _get_classes(module):
-    attrs = (getattr(module, a) for a in dir(module))
-    return (a for a in attrs if isclass(a))
-
-def _get_views(inspect=INSPECT_MODULES):
-    """Get all views which inherit from MenuView"""
-    for mod in (import_attribute(m) for m in inspect):
-        for view in _get_classes(mod):
-            if issubclass(view, MenuView):
-                yield view
-
-###########################################################################
-#                          U N I T   T E S T S                            #
-###########################################################################
-
-from amcat.tools import amcattest
-from django.core.urlresolvers import reverse_lazy
-
-class _RootTestView(MenuView):
-    """This view is not used for anything but testing"""
-    menu_item = ("Root", "/test/")
-
-class MenuTest(amcattest.PolicyTestCase):
-    """This test assumes there is an url with name=index"""
-    class NoMenuView(View):
-        pass
-
-    class ReverseWithView(MenuView):
-        menu_parent = _RootTestView
-        menu_item = ("Reverse", reverse_with("index", "article_id"))
-
-    class LazyView(MenuView):
-        menu_parent = _RootTestView
-        menu_item = ("Lazy", reverse_lazy("index"))
-
-    def setUp(self):
-        global _get_classes
-        self._get_classes = _get_classes
-        _get_classes = lambda x: [_RootTestView, self.NoMenuView, self.ReverseWithView, self.LazyView]
-
-    def tearDown(self):
-        global _get_classes
-        _get_classes = self._get_classes
-
-    def test_get_views(self):
-        self.assertEquals(3, len(list(_get_views())))
-        self.assertTrue(self.NoMenuView not in _get_views())
-        self.assertTrue(_RootTestView in _get_views())
-
-    def test_get_hierarchy(self):
-        roots = tuple(_get_hierarchy())
-        children = [c[0] for c in roots[0][1]]
-
-        self.assertEquals(_RootTestView, roots[0][0])
-        self.assertEquals(2, len(children))
-        self.assertTrue(self.ReverseWithView in children)
-        self.assertTrue(_RootTestView not in children)
-
-    def test_get_empty_menu(self):
-        roots = tuple(get_empty_menu())
-        root = roots[0]
-
-        self.assertEquals(1, len(roots))
-        self.assertEquals("Root", root["name"])
-        self.assertEquals(2, len(root["children"]))
-
-        for child in root["children"]:
-            # Check whether get_empty_menu resolves promises..
-            self.assertFalse(isinstance(child["url"], Promise))
-
-    def test_get_menu(self):
-        from django.test.client import RequestFactory
-        req = RequestFactory().get(reverse_lazy("index"))
-
-        roots = tuple(_get_menu(req, get_empty_menu()))
-        children = roots[0]["children"]
-
-        # Of course, no reverse_with could be resolved
-        self.assertFalse(all(c["url"] for c in children))
-
-    def test_get_submenu(self):
-        menu = tuple(get_empty_menu())
-
-        self.assertEquals(1, len(get_submenu(menu, ())))
-        self.assertEquals(2, len(get_submenu(menu, ("Root",))))
-        self.assertEquals(0, len(get_submenu(menu, ("Root", "Lazy"))))
-        self.assertEquals(None, get_submenu(menu, ("Non-existent",)))
-
-    def test_get_path(self):
-        self.assertEquals(self.LazyView.get_path(), ("Root", "Lazy"))
-        self.assertEquals(_RootTestView.get_path(), ("Root",))
+NAVIGATOR_MENU = OrderedDict((
+    # Categories
+    (MenuItem(None), (
+        (MenuItem("Projects", "projects"), PROJECTS_MENU),
+        (MenuItem("My codingjobs", "my-codingjobs"), CODINGJOBS_MENU)
+    )),
+    (MenuItem("Lists"), (
+        (MenuItem("Users", "users"), USERS_MENU),
+        (MenuItem("Media", "media"), None),
+        (MenuItem("Plugins", "plugins"), PLUGINS_MENU),
+        (MenuItem("Scrapers", "scrapers"), None),
+    )),
+    (MenuItem("User"), (
+        (MenuItem("My details", "self"), None),
+        (MenuItem("Logout", "accounts-logout"), None),
+    )),
+    (MenuItem("Developer", role=Role.objects.get(label="developer")), (
+        (MenuItem("API", "api"), None),
+        (MenuItem("Code", "https://code.google.com/p/amcat/"), None),
+        (MenuItem("Logs", "/sentry/"), None),
+    )),
+))
 

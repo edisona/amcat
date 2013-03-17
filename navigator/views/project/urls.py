@@ -22,7 +22,9 @@ This is the urlrouter for everything within a project. Each specific object
 by the main patterns.
 """
 
+from django.core.urlresolvers import reverse_lazy
 from django.conf.urls.defaults import patterns, url, include
+from django.views.generic.simple import redirect_to
 
 from navigator.views.project import project
 
@@ -110,9 +112,10 @@ project_patterns = patterns('',
 # Main router
 urlpatterns = patterns('',
     # Project report
-    url(r'^$', project.my_active, name='projects'),
-    url(r'^my_all$', project.my_all),
-    url(r'^all$', project.all),
+    url(r'^$', redirect_to, {"url":reverse_lazy("my-active-projects")}, name='projects'),
+    url(r'^my_active$', project.my_active, name="my-active-projects"),
+    url(r'^my_all$', project.my_all, name="all-my-projects"),
+    url(r'^all$', project.all, name="all-projects"),
     url(r'^add$', project.add, name='project-add'),
 
     # Include project-specific urls

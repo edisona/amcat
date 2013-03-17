@@ -19,8 +19,6 @@
 from django.shortcuts import render
 from django.conf import settings
 
-from settings.menu import PROJECT_MENU
-
 from amcat.tools import toolkit
 from amcat.models.article import Article
 from amcat.models.project import Project

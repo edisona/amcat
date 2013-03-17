@@ -29,7 +29,6 @@ from itertools import chain
 from amcat.models import Role, Privilege, Privilege
 from amcat.models.authorisation import check
 
-from django.conf.settings import NAVIGATOR_MENU
 from django.core.urlresolvers import reverse, resolve, reverse_lazy
 from django.views.generic.base import TemplateView
 
@@ -102,6 +101,7 @@ class MenuItem(object):
             project = Project.objects.get(id=path_kwargs[PROJECT_ID])
 
         return {
+            "label" : self.label,
             "is_selected" : self.is_selected(request),
             "is_visible" : self.is_visible(request.user, project),
             "url" : self.get_url(request)
@@ -187,7 +187,7 @@ def _generate_submenus(request, items=None):
     if items is None:
         return ()
 
-    return (((item.to_dict(request) for item in items),) 
+    return ((tuple(item.to_dict(request) for item in items),) 
         + _generate_submenus(request, _get_children_selected(request, items)))
 
 def reverse_with(view, *args, **kwargs):

@@ -1,9 +1,10 @@
-{% for label,url,selected in menu %}
- {% if url %}
-  <div class="content-menu-item{% if selected %}-selected{% endif %}">
-   <div><a href="{{ url }}">{{ label }}</a></div>
+{% for cat, items in menu.0.items %}
+ {% if cat %}<div class="content-menu-header"><div>{{ cat }}</div></div>{% endif %}
+ {% for item in items %}
+  {% if item.is_visible %}
+  <div class="content-menu-item{% if item.is_selected %}-selected{% endif %}">
+   <div><a href="{{ item.url }}">{{ item.label }}</a></div>
   </div>
- {% else %}
-  <div class="content-menu-header"><div>{{ label }}</div></div>
- {% endif %} 
+  {% endif %}
+ {% endfor %}
 {% endfor %}

@@ -24,14 +24,13 @@ from amcat.models.article import Article
 from amcat.models.project import Project
 from amcat.models.articleset import ArticleSet
 
-from navigator.utils.auth import check, check_perm
 from navigator import forms
 
 from amcat.scripts import article_upload as article_upload_scripts
 
 import logging; log = logging.getLogger(__name__)
 
-@check(Article)
+#@check(Article)
 def view(request, art, projectid=None):
     ctx = dict(article=art)
 
@@ -97,7 +96,7 @@ def _build_option_forms(request, choices):
         yield (script[0], frm())
 
 
-@check_perm("add_articles", True)
+#@check_perm("add_articles", True)
 def upload_article(request, id):
     """
     This view gives users the ability to upload articles in various formats,

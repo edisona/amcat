@@ -32,7 +32,6 @@ from amcat.models.plugin import Plugin, PluginType
 from amcat.scripts.actions.add_plugin import AddPlugin
 from amcat.tools import classtools
 from navigator.utils.action import ActionHandler
-from navigator.utils.auth import check
 from api.rest import Datatable
 
 from api.rest.resources import AnalysisResource, PluginResource
@@ -45,7 +44,7 @@ def index(request):
     types = PluginType.objects.all()
     return render(request, 'navigator/plugin/index.html', locals())
 
-@check(PluginType)
+#@check(PluginType)
 def manage(request, plugin_type):
     menu = get_menu()
     selected = plugin_type.label
@@ -60,7 +59,7 @@ def manage(request, plugin_type):
                .filter(type=plugin_type).hide('id', 'type'))
     return render(request, 'navigator/plugin/manage.html', locals())
 
-@check(PluginType)
+#@check(PluginType)
 def add(request, plugin_type):
     if request.POST:
         form = AddPlugin.options_form(request.POST)

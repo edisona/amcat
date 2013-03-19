@@ -29,7 +29,7 @@ body{
 }
 
 h1, h2, h3{
-   border-bottom:1px dotted #e2e2e2;
+    color:black;
 }
 
 h1.noline, h2.noline, h3.noline{
@@ -284,9 +284,14 @@ article{
     display:block;
 }
 
+#breadcrumbs{
+    margin-bottom:15px;
+}
+
 
 #content{
    float:left;
+   margin-top:15px;
    margin-right:20px;
    margin-left:220px; /* 200 + 20 */
    padding-bottom:20px;

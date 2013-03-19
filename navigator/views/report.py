@@ -26,12 +26,12 @@ from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse_lazy
 
 from navigator.menu import MenuView
+from navigator.utils.auth import AuthView
 
 class IndexView(TemplateView):
     template_name = "navigator/report/index.html"
 
-class MediaView(MenuView):
-    menu_item = ("Media", reverse_lazy("media"))
+class MediaView(MenuView, AuthView, TemplateView):
     template_name = "navigator/report/media.html"
 
     def get_context_data(self, **kwargs):

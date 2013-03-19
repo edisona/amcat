@@ -43,8 +43,8 @@ urlpatterns = patterns(
     )
 
 # Sentry
-if settings.DEBUG == False:
-    urlpatterns += patterns('', (r'^sentry/', include('sentry.web.urls')))
+#if settings.DEBUG == False:
+#    urlpatterns += patterns('', (r'^sentry/', include('sentry.web.urls')))
 
 # Static files
 if settings.LOCAL_DEVELOPMENT:

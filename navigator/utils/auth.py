@@ -23,6 +23,7 @@ from base64 import b64decode
 from django.conf import settings
 from django.contrib.auth import authenticate, login
 
+from django.core.urlresolvers import resolve
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
  
@@ -32,10 +33,12 @@ from functools import wraps
 
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.views.generic.base import View
 
 from amcat.models.user import create_user as _create_user
 from amcat.models.user import UserProfile
 from amcat.models.project import Project
+from amcat import models
 
 from amcat.tools import toolkit
 from amcat.tools import sendmail
@@ -72,213 +75,145 @@ def create_user(username, first_name, last_name, email, affiliation, language, r
     log.info("Email sent, done!")
     return u
 
-class check_perm(object):
+def _get_path_kwargs(request):
+    return resolve(request.META["PATH_INFO"]).kwargs
+
+class AuthView(View):
     """
-    This view-decorator checks privilleges against the currently logged
-    in user. Example:
-
-        @check_perm("add_articles", onproject=True, arg='pid')
-        def articles_upload(request, pid):
-            ..
-            return HttpResponse("")
+    This view aims to provide an easy way of denying / granting users access
+    to resources.
     """
-    def __init__(self, priv, onproject=False, arg='id'):
+    # This property will be used to store modelobjects in, and can be used
+    # by other views. Do not define this on your view.
+    object_map = None
+
+    # Should the objects gathered be passed to the template? (Only for
+    # TemplateView's)
+    pass_to_template = True
+
+    # Check for these globally defined privileges
+    global_privileges = ()
+
+    # Check for these privileges on the current project. If project_id is
+    # not defined in the url but this variable is, a HTTP 500 will be
+    # raised.
+    project_privileges = ()
+
+    kwargs_mapping = {
+        # Model                    URL kwarg               Name in context
+        models.Analysis         : ("analysis_id",          "analysis"),
+        models.AnalysisSentence : ("analysis_sentence_id", "analysis_sentence"),
+        models.Article          : ("article_id",           "article"),
+        models.ArticleSet       : ("articleset_id",        "articleset"),
+        models.CodingJob        : ("codingjob_id",         "codingjob"),
+        models.CodingSchema     : ("codingschema_id",      "codingschema"),
+        models.Plugin           : ("plugin_id",            "plugin"),
+        models.PluginType       : ("plugin_type_id",       "plugin"),
+        models.Project          : ("project_id",           "project"),
+        models.User             : ("user_id",              "user")
+    }
+
+    method_mapping = { 
+        "POST" : "update",
+        "GET" : "read",
+        "PUT" : "create",
+        "DELETE" : "delete"
+    }
+
+    # Defines which (HTTP) methods check on model level. All other methods use
+    # instance level verification instead.
+    models_methods = ("PUT",)
+
+    # Define these when subclassing. If a key collides with kwargs_mapping,
+    # these will be used.
+    kwargs_mapping_extra = None
+    method_mapping_extra = None
+
+    # Use check_instances to define which models should be checked on instance
+    # level. For example, defining a list with User in it will result in
+    # a call to user.can_read with HTTP method == GET.
+    check_instances = ()
+
+    # When using PUT, we assume the object doesn't exist yet so it can't be
+    # checked on instance level. 
+    check_models = ()
+
+    def __init__(self, *args, **kwargs):
+        self.object_map = {}
+        self.kwargs_mapping_extra = self.kwargs_mapping_extra or {}
+        self.method_mapping_extra = self.method_mapping_extra or {}
+
+        super(AuthView, self).__init__(*args, **kwargs)
+
+    def _get_names(self, mod):
+        """Get url-namespace and context name for this model"""
+        return self.kwargs_mapping_extra.get(mod, self.kwargs_mapping[mod])
+
+    def _get_checkfunc_name(self, http_method):
+        return "can_{}".format(self.method_mapping[http_method])
+
+    def _check_objects(self, objs):
+        check_func = self._get_checkfunc_name(self.request.META["REQUEST_METHOD"])
+
+        for obj in objs:
+            if not getattr(obj, check_func)(self.request.user):
+                raise PermissionDenied
+
+    def get_instances(self):
+        """"""
+        path_kwargs = _get_path_kwargs(self.request)
+        for mod in self.check_instances or ():
+            kwarg, name = self._get_names(mod)
+
+            if self.request.META["REQUEST_METHOD"] in self.models_methods and (
+                    mod in self.check_models): 
+                # Do not try to fetch not yet existing objects
+                continue
+
+            try:
+                yield (name, mod.objects.get(pk=path_kwargs.get(kwarg)))
+            except mod.DoesNotExist:
+                raise Http404
+
+    def check_privileges(self):
+        # Check global permissions
+        for p in self.global_privileges:
+            if not self.request.user.userprofile.haspriv(p):
+                raise PermissionDenied
+
+        # Check if we need to check project privileges, and whether we've got
+        # a project present.
+        if self.project_privileges:
+            # Raises KeyError if no project avaiable..
+            project = self.object_map[self.kwargs_mapping[models.Project][1]]
+
+        for p in self.project_privileges:
+            if not self.request.user.userprofile.haspriv(p, project=project):
+                raise PermissionDenied
+
+    def get_context_data(self, **kwargs):
         """
-        @type priv: string or Privilege object
-        @param priv: privllege to check permissions for
-
-        @type onproject: boolean
-        @param onproject: check this permission for a project. If this
-        option is set, also provide the keyword argument which receives
-        the pk-id for the project you want to check against.
-
-        @type arg: basestring
-        @param arg: keyword argument which receives the project id for
-        the project to check against (if onproject==True).
+        If pass_to_template is true, object_map will be added to the context data
+        of the template.
         """
-        assert(isinstance(arg, basestring))
+        ctx = super(AuthView, self).get_context_data(**kwargs)
 
-        self.priv = priv
-        self.onproject = onproject
-        self.arg = arg
+        if self.pass_to_template:
+            ctx.update(self.object_map)
 
-    def __call__(self, func):
-        @wraps(func)
-        def check(request, *args, **kwargs):
-            project = None
+        return ctx
+            
+    def dispatch(self, request, *args, **kwargs):
+        self.request = request
+        self.object_map = dict(self.get_instances())
 
-            if self.onproject:
-                try:
-                    project = Project.objects.get(id=kwargs[self.arg])
-                except Project.DoesNotExist:
-                    return HttpResponse("Project not found", status=404)
+        # Check everything
+        self._check_objects(self.object_map.values())
+        self._check_objects(self.check_models)
+        self.check_privileges()
 
-            # Implementation of haspriv allows project=None
-            if not request.user.get_profile().haspriv(self.priv, project):
-                raise PermissionDenied()
-
-            return func(request, *args, **kwargs)
-
-        return check
-
-
-class check(object):
-    """
-    This view-decorator preforms a few basic checks. It checks if
-      * cls.objects.get(**{id=id})        .. it exists
-      * model.can_`action`(request.user)  .. the user has correct permissions
-
-    If not it:
-      * Returns an 404
-      * Returns an 550
-
-    If correct, it executes the view. The arguments of the function will be
-    replaced with an argument containing the requested object. For example,
-    a view for displaying a user might be defined as:
-
-        def view_user(request, id):
-            return response()
-
-    The check funtion replaces `id` with an model object. Thus:
-
-        @check(User)
-        def view_user(request, user):
-            isinstance(user, model.user.User) # True
-            return response()
-
-    If multiple arguments are given by the router, check() replaces them by
-    one non-keyword argument. For example:
-
-        def view_prs(request, project, user, role):
-            return response()
-
-    becomes:
-
-        @check(ProjectRole, args=['project', 'user', 'role'])
-        def view_prs(request, project_role):
-            isinstance(project_role, model.auth.ProjectRole) # True
-            return response()
-
-    The object will always be passed as the second non-keyword argument, or
-    if no second non-keyword argument is specified, the first keyword-argument.
-
-    A router may be configured to give an argument which' key is not available
-    on the specified model, but does represent one. With args_map, one may
-    map between arguments passed by the url-router and the ones on a model. For
-    example:
-
-        def view_codingjob(request, project_id, codingjob_id):
-            pass
-
-    becomes:
-
-        @check(Project, args_map=(('project_id', 'id'),))
-        def view_codingjob(request, project, codingjob_id):
-            pass
-
-    or:
-
-        @check(Project, args_map={'project_id' : 'id'})
-        def view_codingjob(request, project, codingjob_id):
-            pass
-
-    Of course multiple decorations work just fine. Keep in mind you stack them
-    in the right order. Example:
-
-        def view_codingjob(request, project_id, codingjob_id):
-            pass
-
-    becomes:
-
-        @check(Project, args_map={'project_id' : 'id'}, args='project')
-        @check(CodingJob, args_map={'codingjob_id' : 'id'}, args='codingjob')
-        def view_codingjob(request, project, codingjob):
-            pass
-
-    """
-    def __init__(self, cls, action='read', args='id', args_map=None):
-        """
-        @type cls: subclass of django.models.Model
-        @param cls: class to instanciate / check permissions for
-
-        @type action: basestring
-        @param action: check for specific action.
-
-        @type args: basestring, iterable
-        @param args: arguments to pass to cls.objects.get.
-                     If this is None, check will not instanciate cls.
-
-        @type args_map: dict, tuple with 2-length tuples
-        @param args_map: map of arg --> model-property (see docs above)
-        """
-        self.cls = cls
-        self.action = action
-        self.args = toolkit.totuple(args)
-        self.args_map = dict() if not args_map else dict(args_map)
-
-    def _allows_none(self, func):
-        """
-        Methods checks if no values may be passed.
-        """
-        insp = inspect.getargspec(func)
-        first_kw = len(insp.args) - (len(insp.defaults) if insp.defaults else 0)
-
-        # No non-keyword argument besides 'request', which indicates a
-        # default value for object
-        return first_kw == 1
-
-
-    def __call__(self, func):
-        @wraps(func)
-        def check(request, *args, **kwargs):
-            obj = self.cls
-
-            if self.args:
-                if self._allows_none(func) and all([kwargs.get(a, None) is None
-                                                    for a in self.args]):
-                    # This function allows its object to not be specified and there are no
-                    # identifiers given to this 'wrap'-function.
-                    for a in self.args:
-                        if a in kwargs: # Arguments may not be given
-                            del kwargs[a]
-
-                    return func(request, None, *args, **kwargs)
-
-                try:
-                    gargs = dict([(self.args_map.get(a, a), kwargs[a]) for a in self.args])
-                    obj = self.cls.objects.get(**gargs)
-                except self.cls.DoesNotExist:
-                    return HttpResponse('%s not found using gargs=%r' % (self.cls.__name__, gargs),
-                                        status=404)
-
-            # Since django.contrib.auth.models.User does not inherit from our base-model
-            # class, no can_* methods exist. UserProfile does, however.
-            if isinstance(obj, User):
-                # Get a users profile
-                _obj = obj.get_profile()
-            elif inspect.isclass(obj) and issubclass(User, obj):
-                # Not an instance, but a class (probably checking on can_create)
-                _obj = UserProfile
-            else:
-                # "Normal" class/object
-                _obj = obj
-
-            # Check against privillege system
-            can = getattr(_obj, 'can_%s' % self.action)
-            if not can(request.user):
-                raise PermissionDenied("User {request.user} is not allows to '{self.action}' object {_obj!r}".format(**locals()))
-
-            # Delete all id-keywords
-            for a in self.args: del kwargs[a]
-
-            if self.args:
-                return func(request, obj, *args, **kwargs)
-            else:
-                return func(request, *args, **kwargs)
-
-
-        # Return wrap-function
-        return check
+        # No PermissionDenied thrown!
+        return super(AuthView, self).dispatch(request, *args, **kwargs)
 
 class RequireLoginMiddleware(object):
     """

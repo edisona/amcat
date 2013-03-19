@@ -22,12 +22,11 @@
 from django.shortcuts import render
 from api.rest import Datatable
 
-from navigator.utils.auth import check
 from amcat.models.user import User
 
 from api.rest.resources import CodingJobResource
 
-@check(User, args='coder_id', args_map={'coder_id' : 'id'})
+#@check(User, args='coder_id', args_map={'coder_id' : 'id'})
 def index(request, coder=None):
     """
     Show unfinished jobs
@@ -46,7 +45,7 @@ def index(request, coder=None):
 
     return render(request, 'navigator/report/codingjobs.html', locals())
 
-@check(User, args='coder_id', args_map={'coder_id' : 'id'})
+#@check(User, args='coder_id', args_map={'coder_id' : 'id'})
 def all(request, coder):
     """
     Show all (including finished) jobs

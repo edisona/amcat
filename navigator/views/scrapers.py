@@ -19,7 +19,6 @@
 
 from django.shortcuts import render
 from django.core.urlresolvers import reverse
-from navigator.utils.auth import check
 from navigator.views.project.project import articleset
 import logging; log = logging.getLogger(__name__)
 import datetime

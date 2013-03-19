@@ -24,7 +24,6 @@ This controller handles the analysis list and demo views
 from django import forms
 from django.shortcuts import render
 from api.rest.datatable import Datatable
-from navigator.utils.auth import check
 
 from amcat.models.analysis import Analysis, AnalysisSentence
 from amcat.models.sentence import Sentence
@@ -36,7 +35,7 @@ from amcat.tools.dot import Graph, Node, DotTheme
 class DemoForm(forms.Form):
     sentence = forms.CharField()
 
-@check(Analysis)
+#@check(Analysis)
 def demo(request, analysis):
     form = DemoForm(request.POST or None)
 
@@ -67,7 +66,7 @@ def demo(request, analysis):
     return render(request, 'navigator/analysis/demo.html', locals())
 
 
-@check(AnalysisSentence)
+#@check(AnalysisSentence)
 def sentence(request, sentence):
 
     tokens = Datatable(TokenResource).filter(sentence=sentence).hide('sentence', 'id')

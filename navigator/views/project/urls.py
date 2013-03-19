@@ -27,6 +27,7 @@ from django.conf.urls.defaults import patterns, url, include
 from django.views.generic.simple import redirect_to
 
 from navigator.views.project import project
+from navigator.views import project as projectn
 
 # Router for article-pages
 article_patterns = patterns('',
@@ -90,7 +91,8 @@ project_patterns = patterns('',
     url(r'^importable$', project.show_importable_articlesets, name="articleset-importable"),
 
     # Overviews
-    url(r'^$', project.view, name='project'),
+    url(r'^$', redirect_to, {"url":"./overview"}, name='project'),
+    url(r'^overview$', projectn.ProjectOverview.as_view(), name='project-overview'),
     url(r'^articlesets$', project.articlesets, name='project-articlesets'),
     url(r'^selection$', project.selection, name='project-selection'),
     url(r'^codingjobs$', project.codingjobs, name='project-codingjobs'),
@@ -113,9 +115,9 @@ project_patterns = patterns('',
 urlpatterns = patterns('',
     # Project report
     url(r'^$', redirect_to, {"url":reverse_lazy("my-active-projects")}, name='projects'),
-    url(r'^my_active$', project.my_active, name="my-active-projects"),
-    url(r'^my_all$', project.my_all, name="all-my-projects"),
-    url(r'^all$', project.all, name="all-projects"),
+    url(r'^my_active$', projectn.MyActiveProjects.as_view(), name="my-active-projects"),
+    url(r'^my_all$', projectn.MyProjects.as_view(), name="all-my-projects"),
+    url(r'^all$', projectn.AllProjects.as_view(), name="all-projects"),
     url(r'^add$', project.add, name='project-add'),
 
     # Include project-specific urls

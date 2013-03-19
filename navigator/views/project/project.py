@@ -64,7 +64,6 @@ from amcat.scripts.article_upload.upload import UploadScript
 from amcat.scripts.maintenance.deduplicate import DeduplicateScript
 
 from navigator import forms
-from navigator.utils.auth import check, check_perm
 from navigator.utils.action import ActionHandler
 from navigator.utils.misc import session_pop
 
@@ -104,7 +103,7 @@ def table_view(request, context, table, selected=None, overview=False,
 # modularity.
 from navigator.views.article import view as article
 
-@check(Project)
+#@check(Project)
 def upload_article(request, project):
     plugin_type = UploadScript.get_plugin_type()
     scripts = (Datatable(PluginResource, rowlink="./upload-articles/{id}").filter(active=True)
@@ -117,15 +116,15 @@ def upload_article(request, project):
             template='navigator/project/upload.html', can_create_plugin=can_create_plugin,
                       plugin_type=plugin_type)
 
-@check(Project)
+#@check(Project)
 def scrape_articles(request, project):
     scripts = (Datatable(ScraperResource, rowlink="./scrape-articles/{id}").hide('module', 'class_name', 'username', 'password', 'run_daily', 'articleset'))
 
     return table_view(request, project, scripts, selected='article sets',
                       template='navigator/project/scrape.html')
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(Plugin, args_map={'plugin' : 'id'}, args='plugin')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(Plugin, args_map={'plugin' : 'id'}, args='plugin')
 def upload_article_action(request, plugin, project):
     script_class = plugin.get_class()
     form = script_class.get_empty_form(project=project, post=request.POST or None, files=request.FILES)
@@ -153,29 +152,8 @@ def _list_projects(request, title, overview=False, **filter):
     projects = Datatable(ProjectResource).filter(**filter)
     return table_view(request, None, projects, title, overview, PROJECT_OVERVIEW_MENU)
 
-def my_active(request):
-    """
-    Render my active projects
-    """
-    return _list_projects(request, 'my active projects',
-            projectrole__user=request.user, active=True, overview=True)
-
-def my_all(request):
-    """
-    Render all my (including non-active) projects
-    """
-    return _list_projects(request, 'all my projects', projectrole__user=request.user,
-            overview=True)
-
-def all(request):
-    """
-    Render 'all' projects. We don't need to filter here as the 'security' filtering
-    will happen in the API resource module
-    """
-    return _list_projects(request, 'all projects', overview=True)
-
 ### VIEW SINGLE PROJECT ###
-@check(Project)
+#@check(Project)
 def view(request, project):
     """
     View a single project
@@ -188,7 +166,7 @@ def view(request, project):
     })
         
 
-@check(Project)
+#@check(Project)
 def articlesets(request, project):
     """
     Project articlesets page
@@ -208,8 +186,8 @@ def articlesets(request, project):
         "unlinked" : session_pop(request.session, "unlinked_articleset"),
     })
 
-@check(ArticleSet, args='id', action='delete')
-@check(Project, args_map={'projectid' : 'id'}, args='projectid')
+#@check(ArticleSet, args='id', action='delete')
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid')
 def delete_articleset(request, project, aset):
     aset.project = Project.objects.get(id=LITTER_PROJECT_ID)
     aset.indexed = False
@@ -224,23 +202,23 @@ def delete_articleset(request, project, aset):
     request.session['deleted_articleset'] = True
     return redirect(reverse("project-articlesets", args=[project.id]))
 
-@check(ArticleSet, args='id')
-@check(Project, args_map={'projectid' : 'id'}, args='projectid', action='update')
+#@check(ArticleSet, args='id')
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid', action='update')
 def unlink_articleset(request, project, aset):
     project.articlesets.remove(aset)
     request.session['unlinked_articleset'] = True
     return redirect(reverse("project-articlesets", args=[project.id]))
 
 
-@check(ArticleSet, args='id', action='delete')
-@check(Project, args_map={'projectid' : 'id'}, args='projectid')
+#@check(ArticleSet, args='id', action='delete')
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid')
 def deduplicate_articleset(request, project, aset):
     DeduplicateScript(articleset=aset.id, recycle_bin_project=LITTER_PROJECT_ID).run(None)
 
     return redirect(reverse("articleset", args=[project.id, aset.id]))
 
-@check(ArticleSet, args='id', action='update')
-@check(Project, args_map={'projectid' : 'id'}, args='projectid')
+#@check(ArticleSet, args='id', action='update')
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid')
 def edit_articleset(request, project, aset):
     form = modelform_factory(ArticleSet, fields=("project", "name", "provenance"))
     form = form(instance=aset, data=request.POST or None)
@@ -256,7 +234,7 @@ def edit_articleset(request, project, aset):
         "form" : form, "articleset" : aset, 
     })
 
-@check(Project, args_map={'projectid' : 'id'}, args='projectid', action="update")
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid', action="update")
 def show_importable_articlesets(request, project):
     rowlink = reverse("articleset-import", args=[project.id, 0])
     rowlink = rowlink.replace("/0", "/{id}")
@@ -270,15 +248,15 @@ def show_importable_articlesets(request, project):
         "table" : table
     })
 
-@check(ArticleSet, args='id')
-@check(Project, args_map={'projectid' : 'id'}, args='projectid', action="update")
+#@check(ArticleSet, args='id')
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid', action="update")
 def import_articleset(request, project, aset):
     project.articlesets.add(aset)
     return redirect(reverse("articleset", args=[project.id, aset.id]))
 
 
-@check(ArticleSet, args='id')
-@check(Project, args_map={'projectid' : 'id'}, args='projectid')
+#@check(ArticleSet, args='id')
+#@check(Project, args_map={'projectid' : 'id'}, args='projectid')
 def articleset(request, project, aset):
     cls = "Article Set"
     articles = (Datatable(ArticleMetaResource, rowlink='../article/{id}')
@@ -307,7 +285,7 @@ def articleset(request, project, aset):
 
 
 
-@check(Project)
+#@check(Project)
 def selection(request, project):
     """
     Render article selection page.
@@ -338,7 +316,7 @@ def selection(request, project):
 
     return render(request, 'navigator/project/selection.html', ctx)
 
-@check(Project)
+#@check(Project)
 def codingjobs(request, project):
     """
     Coding-jobs tab
@@ -353,19 +331,19 @@ def _codingjob_export(results, codingjob, filename):
     filename = filename.format(codingjob=codingjob, now=datetime.datetime.now())
     return HttpResponse(results, status=201, mimetype="text/csv")
 
-@check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
-@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
+#@check(Project, args_map={'project' : 'id'}, args='project')
 def codingjob_unit_export(request, project, codingjob):
     results = GetCodingJobResults(job=codingjob.id, unit_codings=True).run()
     return _codingjob_export(results, codingjob, "{codingjob}, units, {now}.csv")
 
-@check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
-@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
+#@check(Project, args_map={'project' : 'id'}, args='project')
 def codingjob_article_export(request, project, codingjob):
     results = GetCodingJobResults(job=codingjob.id, unit_codings=False).run()
     return _codingjob_export(results, codingjob, "{codingjob}, articles, {now}.csv")
 
-@check(Project)
+#@check(Project)
 def schemas(request, project):
     """
     Codingschemas-tab
@@ -385,8 +363,8 @@ def schemas(request, project):
     return render(request, "navigator/project/schemas.html", ctx)
 
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
 def schema(request, schema, project):
     fields = (Datatable(CodingSchemaFieldResource)
               .filter(codingschema=schema).hide('id', 'codingschema'))
@@ -396,13 +374,13 @@ def schema(request, schema, project):
             is_new=session_pop(request.session, "schema_{}_is_new".format(schema.id), False),
             is_edited=session_pop(request.session, "schema_{}_edited".format(schema.id), False))
 
-@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(Project, args_map={'project' : 'id'}, args='project')
 def new_schema(request, project):
     schema = CodingSchema.objects.create(name="Untitled schema", project=project)
     return redirect(reverse("project-edit-schema", args=(project.id, schema.id)))
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
 def edit_schema(request, schema, project):
     if request.method == "POST" and not "codingschema-submit" in request.POST:
         return _edit_schemafields_post(request, schema, project)
@@ -479,9 +457,9 @@ def _edit_schemafields_post(request, schema, project, commit=None):
         mimetype='application/json'
     )
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
-@check(CodingSchemaField, args_map={'schemafield' : 'id'}, args='schemafield', action='update')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
+#@check(CodingSchemaField, args_map={'schemafield' : 'id'}, args='schemafield', action='update')
 def edit_schemafield(request, schemafield, schema, project):
     # Require url to be correct
     assert(schema.project == project)
@@ -501,9 +479,9 @@ def edit_schemafield(request, schemafield, schema, project):
             schemaform=schemaform, schema=schema, schemafield=schemafield)
     
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
-@check(CodingSchemaField, args_map={'schemafield' : 'id'}, args='schemafield', action='delete')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
+#@check(CodingSchemaField, args_map={'schemafield' : 'id'}, args='schemafield', action='delete')
 def delete_schemafield(request, schemafield, schema, project):
     assert(schema.project == project)
     assert(schemafield.codingschema == schema)
@@ -520,8 +498,8 @@ def delete_schemafield(request, schemafield, schema, project):
             template="navigator/project/delete_schemafield.html",
             schema=schema, schemafield=schemafield)
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
 def copy_schema(request, schema, project):
     """
     Offer a user to copy a schema to his project
@@ -537,8 +515,8 @@ def copy_schema(request, schema, project):
     return table_view(request, project, None, 'codingschemas',
             template="navigator/project/copy_schema.html")
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingSchema, args_map={'schema' : 'id'}, args='schema')
 def name_schema(request, schema, project):
     """
     User confirmed copying schema, ask for a name to give.
@@ -569,7 +547,7 @@ def name_schema(request, schema, project):
             schema=schema)
 
 
-@check(Project)
+#@check(Project)
 def add_codebook(request, project):
     """
     Add codebook automatically creates an empty codebook and opens the edit codebook page
@@ -577,7 +555,7 @@ def add_codebook(request, project):
     c = Codebook.objects.create(project=project, name='New codebook')
     return redirect(reverse('project-codebook', args=[project.id, c.id]))
 
-@check(Project)
+#@check(Project)
 def codebooks(request, project):
     """
     Codebooks-tab.
@@ -596,8 +574,8 @@ def codebooks(request, project):
 
 
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(Codebook, args_map={'codebook' : 'id'}, args='codebook')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(Codebook, args_map={'codebook' : 'id'}, args='codebook')
 def codebook(request, codebook, project):
     return table_view(request, project, None, 'codebooks',
             template="navigator/project/codebook.html", codebook=codebook)
@@ -609,8 +587,8 @@ def _get_new_labels(labels, code):
             code=code, label=lbl["label"]
         )
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(Codebook, args_map={'codebook' : 'id'}, args='codebook', action="update")
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(Codebook, args_map={'codebook' : 'id'}, args='codebook', action="update")
 def save_name(request, codebook, project):
     codebook.name = request.POST.get("codebook_name")
     codebook.save()
@@ -645,8 +623,8 @@ def _get_codebook_code(ccodes, code, codebook):
     return ccodes.get(code.id)
 
 @transaction.commit_on_success
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(Codebook, args_map={'codebook' : 'id'}, args='codebook', action="update")
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(Codebook, args_map={'codebook' : 'id'}, args='codebook', action="update")
 def save_changesets(request, codebook, project):
     moves = json.loads(request.POST.get("moves", "[]"))
     hides = json.loads(request.POST.get("hides", "[]"))
@@ -690,8 +668,8 @@ def save_changesets(request, codebook, project):
 
     return HttpResponse(status=200)
 
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(Codebook, args_map={'codebook' : 'id'}, args='codebook', action="update")
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(Codebook, args_map={'codebook' : 'id'}, args='codebook', action="update")
 def save_labels(request, codebook, project):
     """
     View called by code-editor to store new labels. It requests
@@ -752,7 +730,7 @@ def save_labels(request, codebook, project):
     return HttpResponse(content=content, status=201, content_type="application/json")
 
 
-@check(Project)
+#@check(Project)
 def import_codebooks(request, project):
     """
     Import a codebook in current project
@@ -789,7 +767,7 @@ def import_codebooks(request, project):
     return render(request, "navigator/project/import-codebooks.html", ctx)
 
 ### PROJECT MANAGEMENT ###
-@check_perm("create_project")
+#@check_perm("create_project")
 def add(request):
     """
     Render form to add a project. When the project was succesfully created, it
@@ -801,7 +779,7 @@ def add(request):
     else:
         return render(request, "navigator/project/add.html", dict(form=h.form, title='project'))
 
-@check(Project, action='update')
+#@check(Project, action='update')
 def edit(request, project):
     """
     Show / process project edit form
@@ -814,7 +792,7 @@ def edit(request, project):
 
     return render(request, 'navigator/project/edit.html', locals())
 
-@check(Project)
+#@check(Project)
 def users_view(request, project):
     """
     View all users affiliated with this project. Also render a form
@@ -835,7 +813,7 @@ def users_view(request, project):
 
     return render(request, 'navigator/project/users.html', ctx)
 
-@check_perm("manage_project_users", True)
+#@check_perm("manage_project_users", True)
 def users_add(request, id):
     """
     Add (multiple) users.
@@ -849,7 +827,7 @@ def users_add(request, id):
     return redirect(reverse(users_view, args=[project.id]))
 
 
-@check(ProjectRole, action='update', args=('project', 'user'))
+#@check(ProjectRole, action='update', args=('project', 'user'))
 def project_role(request, prole):
     """
     Edit a users role on a project.
@@ -867,8 +845,8 @@ def project_role(request, prole):
 
 
 ### CODING JOBS ###
-@check(Project, args_map={'project' : 'id'}, args='project')
-@check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
+#@check(Project, args_map={'project' : 'id'}, args='project')
+#@check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
 def view_codingjob(request, codingjob, project):
     """
     View and edit a codingjob
@@ -887,8 +865,8 @@ def view_codingjob(request, codingjob, project):
 
     return render(request, 'navigator/project/edit_codingjob.html', ctx)
 
-@check_perm("manage_codingjobs", True)
-@check(Project)
+#@check_perm("manage_codingjobs", True)
+#@check(Project)
 def add_codingjob(request, project):
     """
     Add codingjob to a project

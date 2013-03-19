@@ -1,23 +1,21 @@
 {% extends "navigator/base.html" %}
 
 {% block title %}Media{% endblock %}
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini" href="{% url media %}" type="button">Media</a>
+{% endblock %}
 
-{% block tabtitle %}Media{% endblock %}
 
 {% block content %}
 
 {% if can_add %}
-<div>
- <table>
-  <tr>
-   <td>Actions:</td>
-   <td><a href="{%url medium-add %}"> Add a new medium </a></td>
-  </tr>
- </table>
-</div>
+<h1 class="noline">Actions</h1>
+<div><a class="btn" href="{%url medium-add %}"><i class="icon icon-plus"></i> Add</a></div>
 
 {% endif %}
 
+<h1 class="noline">Media</h1>
 {{ media|safe }}
 
 {% endblock %}

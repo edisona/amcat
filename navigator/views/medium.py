@@ -20,10 +20,9 @@ from django.shortcuts import render, redirect
 from django.core.urlresolvers import reverse
 
 from navigator.forms import MediumForm
-from navigator.utils.auth import check_perm
 
 
-@check_perm("manage_media")
+#@check_perm("manage_media")
 def add(request):
     form = MediumForm(request.POST or None)
     

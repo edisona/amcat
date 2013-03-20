@@ -1,0 +1,9 @@
+{% extends "navigator/project/base.html" %}
+{% comment %}This template is a base for specific projects{% endcomment %}
+
+{% block title %}Project {{ project.id }}: {{ project.name }} - {% endblock %}
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini" href="{% url project project.id %}" type="button">{{ project.name }} ({{ project.id }})</a>
+{% endblock %}
+

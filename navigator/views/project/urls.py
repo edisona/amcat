@@ -101,7 +101,7 @@ project_patterns = patterns('',
     url(r'^users$', project.users_view, name='project-users'),
 
     # Actions
-    url(r'^edit$', project.edit, name='project-edit'),
+    url(r'^edit$', projectn.ProjectEdit.as_view(), name='project-edit'),
     url(r'^add-user$', project.users_add, name='project-user-add'),
     url(r'^add-codingschema$', project.new_schema, name='project-add-schema'),
     url(r'^add-codingjob$', project.add_codingjob, name='project-add-codingjob'),

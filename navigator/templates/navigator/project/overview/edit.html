@@ -1,0 +1,14 @@
+{% extends "navigator/project/pbase.html" %}
+
+{% block title %}{{ block.super }}overview{% endblock %}
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini btn" href="{% url project-overview project.id %}" type="button">Overview</a>
+{% endblock %}
+
+{% block content %}
+<h1>Project {{ project.id }}: {{ project.name }}</h1>
+{% include "navigator/project/form.html" with form=form only %}
+<div>asdlkf</div>
+{% endblock %}
+

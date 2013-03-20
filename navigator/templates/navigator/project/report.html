@@ -1,0 +1,13 @@
+{% extends "navigator/project/base.html" %}
+
+{% block title %}Projects overview{% endblock %}
+
+{% block content %}
+<h1 class="noline">Actions</h1>
+<div><a class="btn" href="{%url project-add %}"><i class="icon icon-plus"></i> New project</a></div>
+<br/>
+
+<h1 class="noline">{{title}}</h1>
+{{ table|safe }}
+
+{% endblock %}

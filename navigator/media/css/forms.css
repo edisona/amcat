@@ -1,6 +1,7 @@
 form > table th{
     text-align:left;
     vertical-align:top;
+    padding-right:10px;
 }
 
 form > table span.helptext{

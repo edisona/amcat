@@ -1,0 +1,7 @@
+{% for item in menu.1 %}
+ {% if item.is_visible %}
+ <span class="tab {% if item.is_selected %}selected{% endif %}">
+  <a href="{{ item.url }}">{{ item.label }}</a>
+ </span>
+ {% endif %}
+{% endfor %}

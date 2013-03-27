@@ -1,0 +1,12 @@
+{% extends "navigator/project/report.html" %}
+
+{% block title %}{{ block.super }} - add{% endblock %}
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini btn-primary" href="{% url project-add %}" type="button">Add</a>
+{% endblock %}
+
+{% block content %}
+{% include "navigator/project/form.html" with form=form cancel=cancel only %}
+{% endblock %}
+

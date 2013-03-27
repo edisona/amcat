@@ -8,6 +8,12 @@
 
 {% block content %}
 <h1>Project {{ project.id }}: {{ project.name }}</h1>
+{% if edited %}
+ <div class="alert alert-success">New project details saved succesfully.</div>
+{% endif %}
+{% if new %}
+ <div class="alert alert-success">Welcome to your new project!</div>
+{% endif %}
 <div>
   <table class="key_value">
    <tr>

@@ -25,13 +25,13 @@ import logging; log = logging.getLogger(__name__)
 from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse_lazy
 
-from navigator.menu import MenuView
-from navigator.utils.auth import AuthView
+from navigator.menu import MenuViewMixin
+from navigator.utils.auth import AuthViewMixin
 
-class IndexView(TemplateView):
+class IndexView(MenuViewMixin, TemplateView):
     template_name = "navigator/report/index.html"
 
-class MediaView(MenuView, AuthView, TemplateView):
+class MediaView(MenuViewMixin, AuthViewMixin, TemplateView):
     template_name = "navigator/report/media.html"
 
     def get_context_data(self, **kwargs):

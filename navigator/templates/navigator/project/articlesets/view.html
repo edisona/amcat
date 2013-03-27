@@ -1,0 +1,51 @@
+{% extends "navigator/project/articlesets/overview.html" %}
+
+{% block title %}{{ block.super }} - articlesets{% endblock %}
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini btn-primary" href="{% url articleset project.id articleset.id %}" type="button">Articleset {{articleset.id}}</a>
+{% endblock %}
+
+{% block content %}
+<h1>Article Set {{articleset.id}} : {{ articleset.name }}</h1>
+
+ <div>
+  <table class="key_value">
+   <tr>
+    <td>ID:</td>
+    <td>{{articleset.id}}</td>
+   </tr>
+   <tr>
+    <td>Name:</td>
+    <td>{{articleset.name}}</td>
+   </tr>
+   <tr>
+    <td>Provenance:</td>
+    <td>{{articleset.provenance|linebreaks}}</td>
+   </tr>
+   <tr>
+    <td>Indexed:</td>
+    <td>{{articleset.index_state}}</td>
+   </tr>
+  </table>
+ </div>
+
+ <div>
+     <a class="btn" href="{% url articleset-edit project.id articleset.id %}"><i class="icon icon-edit"></i> Edit details</a>
+
+     <a href="{% url articleset project.id articleset.id %}?indexed={% if articleset.indexed %}0{% else %}1{% endif %}"
+         class="btn">{% if articleset.indexed %}Disable{% else %}Enable{% endif %} Indexing</a>
+
+     <a class="btn confirm" data-confirm="You're about to deduplicate <i>{{ articleset.name }}</i>. This action is not reversible and could take a while, depending on the amount of articles ({{ articlecount }})." href="{% url articleset-deduplicate project.id articleset.id %}"><i class="icon-filter"></i> Deduplicate</a>
+
+     {% if articleset.project.id == project.id %}
+         <a class="btn btn-danger confirm" data-confirm="You're about to delete <i>{{ articleset.name }}</i>. This action is not reversible." href="{% url articleset-delete project.id articleset.id %}"><i class="icon-white icon-trash"></i> Delete</a>
+     {% else %}
+         <a class="btn btn-warning confirm" data-confirm="You're about to unlink <i>{{ articleset.name }}</i>." href="{% url articleset-unlink project.id articleset.id %}"><i class="icon-white icon-remove"></i> Unlink</a>
+     {% endif %}
+
+ </div>
+<hr />
+<h1>Articles:</h1>
+ {{ articles|safe }}
+{% endblock %}

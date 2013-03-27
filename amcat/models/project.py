@@ -123,19 +123,6 @@ class Project(AmcatModel):
         app_label = 'amcat'
         ordering = ('name',)
 
-    def save(self, *args, **kargs):
-        if self.insert_user_id is None:
-            # Import at top causes a circular import, unfortunately
-            from amcatnavigator.utils.auth import get_request
-
-            # No insert user is set, try to retrieve it
-            req = get_request()
-            if req is not None:
-                self.insert_user_id = req.user.id
-
-        super(Project, self).save(*args, **kargs)
-
-        
 ###########################################################################
 #                          U N I T   T E S T S                            #
 ###########################################################################

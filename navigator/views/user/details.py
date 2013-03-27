@@ -19,13 +19,14 @@
 from api.rest import Datatable
 from api.rest.resources import UserResource, ProjectResource
 
+from django.views.generic import View
 from django.views.generic.edit import FormView
 from django.core.urlresolvers import reverse, reverse_lazy
 
 from navigator.forms import UserForm
-from navigator.menu import MenuView
+from navigator.menu import MenuViewMixin
 
-class UserDetailView(MenuView):
+class UserDetailView(MenuViewMixin, View):
     template = "navigator/user/view.html"
     form_class = UserForm
 

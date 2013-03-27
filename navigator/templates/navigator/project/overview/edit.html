@@ -8,7 +8,6 @@
 
 {% block content %}
 <h1>Project {{ project.id }}: {{ project.name }}</h1>
-{% include "navigator/project/form.html" with form=form only %}
-<div>asdlkf</div>
+{% include "navigator/project/form.html" with form=form cancel=cancel only %}
 {% endblock %}
 

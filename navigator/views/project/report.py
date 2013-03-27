@@ -17,7 +17,7 @@
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
-from navigator.menu import MenuView
+from navigator.menu import MenuViewMixin
 from api.rest import Datatable
 from api.rest.resources import ProjectResource
 from django.views.generic.base import TemplateView
@@ -29,7 +29,7 @@ all projects, active projects..)
 
 __all__ = ("MyProjects", "AllProjects", "MyActiveProjects")
 
-class AllProjects(MenuView, TemplateView):
+class AllProjects(MenuViewMixin, TemplateView):
     template_name = "navigator/project/report.html"
     title = "All projects"
 

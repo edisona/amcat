@@ -37,9 +37,9 @@ import logging; log = logging.getLogger(__name__)
 PROJECT_ID = "project_id"
 
 ### VIEWS ###
-class MenuView(View):
+class MenuViewMixin(object):
     def get_context_data(self, **kwargs):
-        ctx = super(MenuView, self).get_context_data(**kwargs)
+        ctx = super(MenuViewMixin, self).get_context_data(**kwargs)
         ctx.update({"menu":tuple(generate_menu(self.request))})
         return ctx
 

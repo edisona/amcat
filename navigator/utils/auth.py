@@ -78,7 +78,7 @@ def create_user(username, first_name, last_name, email, affiliation, language, r
 def _get_path_kwargs(request):
     return resolve(request.META["PATH_INFO"]).kwargs
 
-class AuthView(View):
+class AuthViewMixin(object):
     """
     This view aims to provide an easy way of denying / granting users access
     to resources.
@@ -143,7 +143,7 @@ class AuthView(View):
         self.kwargs_mapping_extra = self.kwargs_mapping_extra or {}
         self.method_mapping_extra = self.method_mapping_extra or {}
 
-        super(AuthView, self).__init__(*args, **kwargs)
+        super(AuthViewMixin, self).__init__(*args, **kwargs)
 
     def _get_names(self, mod):
         """Get url-namespace and context name for this model"""
@@ -196,7 +196,7 @@ class AuthView(View):
         If pass_to_template is true, object_map will be added to the context data
         of the template.
         """
-        ctx = super(AuthView, self).get_context_data(**kwargs)
+        ctx = super(AuthViewMixin, self).get_context_data(**kwargs)
 
         if self.pass_to_template:
             ctx.update(self.object_map)
@@ -209,11 +209,13 @@ class AuthView(View):
 
         # Check everything
         self._check_objects(self.object_map.values())
-        self._check_objects(self.check_models)
         self.check_privileges()
 
+        if request.META["REQUEST_METHOD"] in self.models_methods:
+            self._check_objects(self.check_models)
+
         # No PermissionDenied thrown!
-        return super(AuthView, self).dispatch(request, *args, **kwargs)
+        return super(AuthViewMixin, self).dispatch(request, *args, **kwargs)
 
 class RequireLoginMiddleware(object):
     """

@@ -17,36 +17,95 @@
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
-from navigator.menu import MenuView
-from navigator.utils.auth import AuthView
+from navigator.menu import MenuViewMixin
+from navigator.utils.auth import AuthViewMixin
+from navigator.utils.misc import session_pop
 
-from django.core.urlresolvers import reverse_lazy
-from django.views.generic.edit import FormView
+from django.core.urlresolvers import reverse_lazy, reverse
+from django.views.generic.edit import FormView, CreateView
 from django.views.generic.base import TemplateView
 from django.forms.models import modelform_factory
+from django.shortcuts import redirect
 
-from api.rest import Datatable
-from api.rest.resources import ProjectResource
-
-from amcat.models import Project
+from amcat.models import Project, ProjectRole, Role
 
 """
 This module contains all pages with links to projects (my projects,
 all projects, active projects..)
 """
 
-__all__ = ("ProjectOverview", "ProjectEdit")
+__all__ = ("ProjectOverview", "ProjectEdit", "ProjectAdd")
 
-class ProjectOverview(AuthView, MenuView, TemplateView):
+PROJECT_EDIT = "project_{project.id}_edited"
+PROJECT_NEW = "project_{project.id}_new"
+
+ProjectForm = modelform_factory(Project, fields=
+    ("name", "description", "guest_role", "active", "index_default")
+)
+
+class ProjectOverview(AuthViewMixin, MenuViewMixin, TemplateView):
     template_name = "navigator/project/overview/view.html"
     check_instances = (Project,)
 
-class ProjectEdit(AuthView, MenuView, FormView):
+    def get_context_data(self, **kwargs):
+        edit_key = PROJECT_EDIT.format(**self.object_map)
+        new_key = PROJECT_NEW.format(**self.object_map)
+
+        ctx = super(ProjectOverview, self).get_context_data(**kwargs)
+        ctx.update({
+            "edited" : session_pop(self.request.session, edit_key),
+            "new" : session_pop(self.request.session, new_key),
+        })
+
+        return ctx
+
+class ProjectEdit(AuthViewMixin, MenuViewMixin, FormView):
     template_name = "navigator/project/overview/edit.html"
-    form_class = modelform_factory(Project, exclude=("insert_user",))
-    succes_url = reverse_lazy("bla")
+    form_class = ProjectForm
     check_instances = (Project,)
 
+    def form_valid(self, form):
+        form.save()
+        self.request.session[PROJECT_EDIT.format(**self.object_map)] = True
+        return super(ProjectEdit, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse("project-overview", kwargs={"project_id":self.object_map["project"].id})
+
     def get_form_kwargs(self, **kwargs):
-        return dict(instance=self.object_map["project"])
+        kws = super(ProjectEdit, self).get_form_kwargs(**kwargs)
+        kws.update(dict(instance=self.object_map["project"]))
+        return kws
+
+class ProjectAdd(AuthViewMixin, MenuViewMixin, CreateView):
+    template_name = "navigator/project/add.html"
+    form_class = ProjectForm
+    check_models = (Project,)
+
+    def form_valid(self, form):
+        # Save form with additional info
+        p = form.save(commit=False)
+        p.owner = p.insert_user = self.request.user
+        p.save()
+
+        # Set a role as admin
+        pr = ProjectRole(project=p, user=self.request.user)
+        pr.role = Role.objects.get(projectlevel=True, label='admin')
+        pr.save()
+
+        # Set session variable to indicate the just made project is new
+        self.request.session[PROJECT_NEW.format(project=p)] = True
+
+        # Redirect to success url. This is what our parent would do, but it
+        # doesn't accept a commit=False, so we have to do it ourselves.
+        self.object = p
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse("project", kwargs=dict(project_id=self.object.id))
+
+    def get_context_data(self, **kwargs):
+        ctx = super(ProjectAdd, self).get_context_data(**kwargs)
+        ctx.update({"cancel":reverse("projects")})
+        return ctx
 

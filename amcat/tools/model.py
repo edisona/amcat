@@ -23,7 +23,7 @@ from django.core.exceptions import ValidationError
 from amcat.tools.caching import _get_cache_key
 from django_extensions.db.fields import UUIDField
 
-__all__ = ['AmcatModel']
+__all__ = ('AmcatModel', 'AmcatProjectModel')
 
 class AmcatModel(models.Model):
     """Replacement for standard Django-model, extending it with
@@ -32,27 +32,62 @@ class AmcatModel(models.Model):
 
     ### Check functions ###
     def can_read(self, user):
-        return True
+        """This method indicates whether `user` can read this instance. It
+        should be overridden by all subclasses.
+
+        default: True"""
+        this = self.__class__.objects.filter(pk=self.pk)
+        return self.get_readable(this, user).exists()
 
     def can_update(self, user):
+        """This method indicates whether `user` can update this instance. It
+        should be overridden by all subclasses.
+
+        default: True"""
         return self.can_read(user)
 
     def can_delete(self, user):
+        """This method indicates whether `user` can delete this instance. It
+        should be overridden by all subclasses.
+
+        default: True"""
         return self.can_update(user)
 
     @classmethod
     def can_create(cls, user):
         return True
 
+    @classmethod
+    def get_readable(cls, queryset, user):
+        """Return a (filtered) queryset which only contains objects which can
+        be read based on the privileges of the user."""
+        return queryset
+
     class Meta():
-        abstract=True
-        app_label = "model"
+        abstract = True
 
     def __unicode__(self):
         try:
             return unicode(getattr(self, self.__label__))
         except AttributeError:
             return unicode(self.id)
+
+class AmcatProjectModel(AmcatModel):
+    """
+    Implemented by all models holding a project-property. All read/update/delete
+    methods are ran on this project.
+    """
+    def can_read(self, user):
+        return self.project.can_read(user)
+
+    def can_update(self, user):
+        return self.project.can_read(user)
+
+    def can_delete(self, user):
+        return self.can_update(user)
+
+    class Meta():
+        abstract = True
 
 class PostgresNativeUUIDField(UUIDField):
     """

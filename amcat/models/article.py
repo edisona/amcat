@@ -24,7 +24,7 @@ articles database table.
 
 from __future__ import unicode_literals, print_function, absolute_import
 
-from amcat.tools.model import AmcatModel, PostgresNativeUUIDField
+from amcat.tools.model import AmcatProjectModel, PostgresNativeUUIDField
 
 from amcat.models.authorisation import Role
 from amcat.models.medium import Medium
@@ -32,7 +32,6 @@ from amcat.models.medium import Medium
 from django.db import models
 
 import logging;
-from amcat.tools.caching import RowCacheManager
 
 log = logging.getLogger(__name__)
 
@@ -41,10 +40,6 @@ import re
 WORD_RE = re.compile('[{L}{N}]+') # {L} --> All (unicode) letters
                                   # {N} --> All numbers
 
-def help():
-    1/0
-
-
 def word_len(txt):
     """Count words in `txt`
 
@@ -52,7 +47,7 @@ def word_len(txt):
     if not txt: return 0 # Safe handling of txt=None
     return len(re.sub(WORD_RE, ' ', txt).split())
 
-class Article(AmcatModel):
+class Article(AmcatProjectModel):
     """
     Class representing a newspaper article
     """
@@ -80,8 +75,6 @@ class Article(AmcatModel):
                                db_index=True, blank=True)
     project = models.ForeignKey("amcat.Project", db_index=True, related_name="articles")
     medium = models.ForeignKey(Medium, db_index=True)
-
-    objects = RowCacheManager()
 
     class Meta():
         db_table = 'articles'
@@ -112,6 +105,17 @@ class Article(AmcatModel):
                 return s
 
     ## Auth ##
+    def can_delete(self, user):
+        return False
+
+    def can_update(self, user):
+        return False
+
+    def get_readable(self, queryset, user):
+        if user.is_superuser: return queryset
+
+        return queryset.filter(Q())
+
     def can_read(self, user):
         if user.is_superuser:
             return True
@@ -129,9 +133,6 @@ class Article(AmcatModel):
 
     def __repr__(self):
         return "<Article %s: %r>" % (self.id, self.headline)
-
-
-
 
 ###########################################################################
 #                          U N I T   T E S T S                            #

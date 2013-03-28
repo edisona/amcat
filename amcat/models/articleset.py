@@ -24,7 +24,7 @@ coding jobs.
 """
 
 from amcat.tools.toolkit import splitlist
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatProjectModel
 from amcat.tools.djangotoolkit import get_or_create
 from amcat.models.article import Article
 
@@ -56,7 +56,7 @@ def _articles_to_ids(articles):
     for art in articles:
         yield art if type(art) is int else art.id
 
-class ArticleSet(AmcatModel):
+class ArticleSet(AmcatProjectModel):
     """
     Model for the sets table. A set is part of a project and contains articles.
     It can also be seen as a 'tag' for articles.
@@ -158,7 +158,7 @@ class ArticleSet(AmcatModel):
                 if self.indexed else "Not indexed")
 
         
-class ArticleSetArticle(AmcatModel):
+class ArticleSetArticle(AmcatProjectModel):
     """
     ManyToMany table for article sets. An explicit model allows more prefeting in
     django queries and doesn't cost anything
@@ -169,6 +169,10 @@ class ArticleSetArticle(AmcatModel):
     id = models.AutoField(primary_key=True, db_column='id')
     articleset = models.ForeignKey(ArticleSet)
     article = models.ForeignKey(Article)
+
+    @property
+    def project(self):
+        return self.articleset.project
 
     class Meta():
         app_label = 'amcat'

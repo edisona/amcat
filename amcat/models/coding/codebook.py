@@ -31,13 +31,13 @@ from datetime import datetime
 
 from django.db import models
 
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatModel, AmcatProjectModel
 from amcat.models.coding.code import Code, Label
 from django.core.exceptions import ValidationError
 
 
 
-class Codebook(AmcatModel):
+class Codebook(AmcatProjectModel):
     """Model class for table codebooks
 
     Codebook caches values, so please use the provided methods to add or remove
@@ -256,13 +256,17 @@ class Codebook(AmcatModel):
                                                 .format(**locals()))
             b._check_not_a_base(base)
 
-class CodebookBase(AmcatModel):
+class CodebookBase(AmcatProjectModel):
     """Many-to-many field (codebook : codebook) with ordering"""
     id = models.AutoField(primary_key=True, db_column='codebook_base_id')
     codebook = models.ForeignKey(Codebook, db_index=True, related_name='codebookbases')
     base = models.ForeignKey(Codebook, db_index=True, related_name="+")
 
     rank = models.IntegerField(default=0, null=False)
+
+    @property
+    def project(self):
+        return self.codebook.project
 
     class Meta():
         db_table = 'codebooks_bases'
@@ -287,7 +291,7 @@ class Function(AmcatModel):
         app_label = 'amcat'
 
 
-class CodebookCode(AmcatModel):
+class CodebookCode(AmcatProjectModel):
     """Many-to-many field (codebook : code) with additional properties"""
     id = models.AutoField(primary_key=True, db_column='codebook_object_id')
 
@@ -301,6 +305,10 @@ class CodebookCode(AmcatModel):
     validfrom = models.DateTimeField(null=True)
     validto = models.DateTimeField(null=True)
     function = models.ForeignKey(Function, default=0)
+
+    @property
+    def project(self):
+        return self.codebook.project
 
     def save(self, *args, **kargs):
         self.validate()

@@ -26,7 +26,7 @@ Each coding job has codingschemas for articles and/or sentences.
 
 from functools import partial
 
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatModel, AmcatProjectModel
 from amcat.tools.caching import set_cache
 from amcat.tools.table import table3 
 
@@ -44,7 +44,7 @@ from django.db import models
 
 import logging; log = logging.getLogger(__name__)
             
-class CodingJob(AmcatModel):
+class CodingJob(AmcatProjectModel):
     """
     Model class for table codingjobs. A Coding Job is a container of sets of articles
     assigned to coders in a project with a specified unit and article schema

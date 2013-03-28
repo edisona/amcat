@@ -27,12 +27,10 @@ CodingSchemaFieldTypes are the types of field, e.g. both subject and object
 are ontology coding types.
 """
 
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatModel, AmcatProjectModel
 
 from amcat.models.coding.codebook import Codebook
-
 from amcat.models.coding.codingschema import CodingSchema, RequiredValueError
-
 from amcat.models.coding import serialiser
 
 from django.db import models
@@ -71,7 +69,7 @@ class CodingSchemaFieldType(AmcatModel):
         db_table = 'codingschemas_fieldtypes'
         app_label = 'amcat'
         
-class CodingSchemaField(AmcatModel):
+class CodingSchemaField(AmcatProjectModel):
     """Model for codingschemas_fields
 
     Fields are the concrete fields in an coding schema. Every value in an actual
@@ -93,6 +91,10 @@ class CodingSchemaField(AmcatModel):
     # Default needs to the last field specified, in order to allow checks on
     # `fieldtype` when validating `default` in forms.
     default = models.CharField(db_column='deflt', max_length=50, null=True, blank=True)
+
+    @property
+    def project(self):
+        return self.codebook.project
 
     class Meta():
         db_table = 'codingschemas_fields'

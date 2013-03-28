@@ -29,7 +29,7 @@ import logging; log = logging.getLogger(__name__)
 from django.db import models
 
 from amcat.tools.caching import cached, invalidates
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatModel, AmcatProjectModel
 from amcat.models.coding.codingschemafield import CodingSchemaField
 from amcat.models.article import Article
 from amcat.models.sentence import Sentence
@@ -49,7 +49,7 @@ class CodingStatus(AmcatModel):
 
 STATUS_NOTSTARTED, STATUS_INPROGRESS, STATUS_COMPLETE, STATUS_IRRELEVANT = 0, 1, 2, 9
         
-class Coding(AmcatModel):
+class Coding(AmcatProjectModel):
     """
     Model class for codings. Codings provide the link between a Coding Job 
     and actual Coding Values. 
@@ -63,6 +63,10 @@ class Coding(AmcatModel):
 
     comments = models.TextField(blank=True, null=True)
     status = models.ForeignKey(CodingStatus, default=STATUS_NOTSTARTED)
+
+    @property
+    def project(self):
+        return self.codingjob.project
     
     class Meta():
         db_table = 'codings'
@@ -134,7 +138,7 @@ class Coding(AmcatModel):
         a.save()
         
         
-class CodingValue(AmcatModel):
+class CodingValue(AmcatProjectModel):
     """
     Model class for coding values. 
     """
@@ -146,6 +150,10 @@ class CodingValue(AmcatModel):
 
     strval = models.CharField(blank=True, null=True, max_length=1000)
     intval = models.IntegerField(null=True)
+
+    @property
+    def project(self):
+        return self.coding.codingjob.project
 
     def save(self, *args, **kargs):
         #Enforce constraint field.schema == coding.schema

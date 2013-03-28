@@ -24,7 +24,7 @@ schema to be used for manual coding
 
 from __future__ import unicode_literals, print_function, absolute_import
 
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatModel, AmcatProjectModel
 
 from django.db import models
 
@@ -39,7 +39,7 @@ class RequiredValueError(ValidationError):
     """Validation Error used when a required field is missing"""
     pass
 
-class CodingSchema(AmcatModel):
+class CodingSchema(AmcatProjectModel):
     """Model for table codingschemas: A coding schema used for manual coding"""
     id = models.AutoField(db_column='codingschema_id', primary_key=True)
     __label__ = 'name'

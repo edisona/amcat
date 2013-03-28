@@ -29,7 +29,7 @@ from __future__ import unicode_literals, print_function, absolute_import
 
 from django.db import models, transaction
 
-from amcat.tools.model import AmcatModel
+from amcat.tools.model import AmcatModel, AmcatProjectModel
 from amcat.tools.djangotoolkit import receiver
 from amcat.models.article import Article
 from amcat.models.articleset import ArticleSetArticle, ArticleSet
@@ -105,7 +105,7 @@ class AnalysisArticle(AmcatModel):
         """
         self.do_store_analysis(tokens, triples)
         
-class AnalysisProject(AmcatModel):
+class AnalysisProject(AmcatProjectModel):
     """
     Explicit many-to-many projects - analyses. Hopefully this can be removed
     when prefetch_related hits the main branch.

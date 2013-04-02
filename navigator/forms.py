@@ -140,15 +140,6 @@ class UserForm(forms.ModelForm):
     class Meta:
         model = User
 
-class TogglePreprocessingForm(forms.Form):
-    analysis = forms.ModelChoiceField(queryset=Analysis.objects.filter(plugin__active=True))
-    def __init__(self, request=None, project=None, **kargs):
-        super(TogglePreprocessingForm, self).__init__(request, **kargs)
-        if project:
-            in_project = [pa.analysis_id for pa in AnalysisProject.objects.filter(project=project)]
-            self.fields['analysis'].queryset = (self.fields['analysis'].queryset
-                                                .exclude(pk__in=in_project))
-
 
 class AddUserForm(UserForm):
     def __init__(self, request, *args, **kwargs):

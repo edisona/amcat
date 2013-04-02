@@ -110,8 +110,8 @@ from navigator.views.article import view as article
 @check(Project)
 def upload_article(request, project):
     plugin_type = UploadScript.get_plugin_type()
-    scripts = (Datatable(PluginResource, rowlink="./upload-articles/{id}").filter(active=True)
-               .filter(type=plugin_type)
+    scripts = (Datatable(PluginResource, rowlink="./upload-articles/{id}")
+               .filter(plugin_type=plugin_type)
                .hide('id', 'module', 'class_name', 'type'))
 
     can_create_plugin = Plugin.can_create(request.user)
@@ -355,18 +355,21 @@ def codingjobs(request, project):
 def _codingjob_export(results, codingjob, filename):
     results = TableToSemicolonCSV().run(results)
     filename = filename.format(codingjob=codingjob, now=datetime.datetime.now())
-    return HttpResponse(results, status=201, mimetype="text/csv")
+    response = HttpResponse(content_type='text/csv', status=201)
+    response['Content-Disposition'] = 'attachment; filename="{filename}"'.format(**locals())
+    response.write(results)
+    return response
 
 @check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
 @check(Project, args_map={'project' : 'id'}, args='project')
 def codingjob_unit_export(request, project, codingjob):
-    results = GetCodingJobResults(job=codingjob.id, unit_codings=True).run()
+    results = GetCodingJobResults(job=codingjob.id, unit_codings=True, deserialize_codes=True).run()
     return _codingjob_export(results, codingjob, "{codingjob}, units, {now}.csv")
 
 @check(CodingJob, args_map={'codingjob' : 'id'}, args='codingjob')
 @check(Project, args_map={'project' : 'id'}, args='project')
 def codingjob_article_export(request, project, codingjob):
-    results = GetCodingJobResults(job=codingjob.id, unit_codings=False).run()
+    results = GetCodingJobResults(job=codingjob.id, unit_codings=False, deserialize_codes=True).run()
     return _codingjob_export(results, codingjob, "{codingjob}, articles, {now}.csv")
 
 @check(Project)

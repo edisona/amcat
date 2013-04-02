@@ -29,7 +29,6 @@ from django.core.urlresolvers import reverse
 from django import forms
 
 from amcat.models.plugin import Plugin, PluginType
-from amcat.scripts.actions.add_plugin import AddPlugin
 from amcat.tools import classtools
 from navigator.utils.action import ActionHandler
 from navigator.utils.auth import check

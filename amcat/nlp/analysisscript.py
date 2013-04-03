@@ -67,6 +67,7 @@ class AnalysisScript(Script):
                 if success:
                     analysed_article.done = True
                     analysed_article.save()
+                return success
         except Exception, e:
             log.exception("Error on retrieving/storing parse for ananalysed_article {analysed_article.id}".format(**locals()))
             self._set_error(analysed_article, traceback.format_exc())

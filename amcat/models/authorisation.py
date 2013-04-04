@@ -58,12 +58,9 @@ class ProjectModelBackend(object):
             return None
 
         # Check for app_label
-        try:
+        if "." in perm:
             app_label, perm = perm.split(".")
-        except ValueError:
-            # Permission provided without app_label, continue
-            pass
-        else:
+
             if app_label != Permission._meta.app_label:
                 # Do not permanently deny access. Other backends may wish to
                 # grant it.

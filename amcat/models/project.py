@@ -20,7 +20,7 @@
 """ORM Module representing projects"""
 
 from __future__ import unicode_literals, print_function, absolute_import
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Permission
 
 from amcat.tools.model import AmcatModel
 from amcat.tools.toolkit import wrapped
@@ -60,7 +60,7 @@ class Project(AmcatModel):
                                     related_name='inserted_project',
                                     editable=False)
 
-    guest_role = models.ForeignKey("amcat.Role", default=ROLEID_PROJECT_READER, null=True)
+    guest_role = models.ForeignKey(Permission, null=True)
 
     active = models.BooleanField(default=True)
     index_default = models.BooleanField(default=True)
@@ -84,11 +84,6 @@ class Project(AmcatModel):
         """
         return Codebook.objects.filter(Q(projects_set=self)|Q(project=self))
     
-    def can_read(self, user):
-        return (self in user.get_profile().projects
-                or user.get_profile().haspriv('view_all_projects')
-                or self.guest_role is not None)
-
     @property
     def users(self):
         """Get a list of all users with some role in this project"""
@@ -122,6 +117,12 @@ class Project(AmcatModel):
         db_table = 'projects'
         app_label = 'amcat'
         ordering = ('name',)
+        permissions = (
+            ("can_view_meta", "Can view meta information"),
+            ("can_view", "Can view all information"),
+            ("can_edit", "Can add/edit/delete codingjobs, codebooks, .."),
+            ("can_manage", "Can edit members, description, ..")
+        )
 
 ###########################################################################
 #                          U N I T   T E S T S                            #

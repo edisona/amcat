@@ -33,7 +33,6 @@ from django.core.management.commands.loaddata import Command
 
 from django.contrib.auth import models as auth_models
 from django.contrib.auth.management import create_superuser
-from amcat.models.authorisation import Role
 from amcat.models.plugin import PluginType, Plugin
 
 import amcat.models
@@ -49,7 +48,7 @@ def create_admin():
     except auth_models.User.DoesNotExist:
         su = auth_models.User.objects.create_superuser('amcat', 'amcat@example.com', 'amcat')
         sup = su.get_profile()
-        sup.role = Role.objects.get(label="superadmin", projectlevel=False)
+        #sup.role = Role.objects.get(label="superadmin", projectlevel=False)
         sup.save()
 
         log.info("\n{line}\n#   A default superuser `amcat` with password `amcat` has been created.   #\n{line}"

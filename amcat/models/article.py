@@ -26,7 +26,6 @@ from __future__ import unicode_literals, print_function, absolute_import
 
 from amcat.tools.model import AmcatProjectModel, PostgresNativeUUIDField
 
-from amcat.models.authorisation import Role
 from amcat.models.medium import Medium
 
 from django.db import models
@@ -103,33 +102,6 @@ class Article(AmcatProjectModel):
         for s in self.sentences:
             if s.parnr == parnr and s.sentnr == sentnr:
                 return s
-
-    ## Auth ##
-    def can_delete(self, user):
-        return False
-
-    def can_update(self, user):
-        return False
-
-    def get_readable(self, queryset, user):
-        if user.is_superuser: return queryset
-
-        return queryset.filter(Q())
-
-    def can_read(self, user):
-        if user.is_superuser:
-            return True
-
-        # Check default role on project
-        read_meta = Role.objects.get(label='metareader', projectlevel=True)
-        if self.project.guest_role.id >= read_meta.id:
-            return True
-
-        # Check users role on project
-        if user.projectrole_set.filter(project__articles__article=self, role__id__gt=read_meta.id):
-            return True
-
-        return False
 
     def __repr__(self):
         return "<Article %s: %r>" % (self.id, self.headline)

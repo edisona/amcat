@@ -29,16 +29,16 @@ from django import forms
 from amcat.scripts.script import Script
 from amcat.models.user import User
 from amcat.models.project import Project
-from amcat.models.authorisation import Role, ProjectRole
+#from amcat.models.authorisation import Role, ProjectRole
 
 PROJECT_ROLE_READER=11
 
 class AddProjectForm(forms.ModelForm):
     owner = forms.ModelChoiceField(queryset=User.objects.all())
-    guest_role = forms.ModelChoiceField(queryset=Role.objects.filter(projectlevel=True),
-                                        required=False, help_text="Leaving this value "+
-                                        "empty means it will not be readable by guests.",
-                                       initial=PROJECT_ROLE_READER)
+    #guest_role = forms.ModelChoiceField(queryset=Role.objects.filter(projectlevel=True),
+    #                                    required=False, help_text="Leaving this value "+
+    #                                    "empty means it will not be readable by guests.",
+    #                                   initial=PROJECT_ROLE_READER)
     insert_user = forms.ModelChoiceField(queryset=User.objects.all(), required=False)
 
     @classmethod

@@ -31,7 +31,7 @@ from django import forms
 from amcat.tools.djangotoolkit import get_or_create
 from amcat.scripts.script import Script
 from amcat.models.user import User, Affiliation, create_user
-from amcat.models.authorisation import Role
+#from amcat.models.authorisation import Role
 from amcat.forms.fields import UserField
 
 class AddUserForm(forms.ModelForm):

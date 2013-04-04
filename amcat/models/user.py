@@ -23,7 +23,6 @@ from __future__ import print_function, absolute_import
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from amcat.models.language import Language
-from amcat.models.authorisation import Role
 from amcat.models import authorisation as auth
 from amcat.models.project import Project
 
@@ -64,7 +63,7 @@ class UserProfile(AmcatModel):
 
     affiliation = models.ForeignKey(Affiliation, default=1)
     language = models.ForeignKey(Language, default=1)
-    role = models.ForeignKey(Role, default=0)
+    #role = models.ForeignKey(Role, default=0)
 
     objects = RowCacheManager()
 

@@ -57,6 +57,18 @@ class ProjectModelBackend(object):
             # We can't provide any information about non-project permissions
             return None
 
+        # Check for app_label
+        try:
+            app_label, perm = perm.split(".")
+        except ValueError:
+            # Permission provided without app_label, continue
+            pass
+        else:
+            if app_label != Permission._meta.app_label:
+                # Do not permanently deny access. Other backends may wish to
+                # grant it.
+                return False
+
         # Check for existence. If permission does not exist, deny access.
         if perm not in self.permissions.keys():
             raise PermissionDenied

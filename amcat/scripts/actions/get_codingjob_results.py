@@ -93,7 +93,7 @@ def deserialize_codes(table):
             f = col.field
         except AttributeError:
             continue
-        if f.fieldtype.name == "DB ontology":
+        if f.fieldtype.serialiserclassname == "CodebookSerialiser":
             columns.add(col)
 
     # gather code ids

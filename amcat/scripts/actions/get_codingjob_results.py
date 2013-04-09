@@ -47,6 +47,11 @@ class GetCodingJobResults(Script):
     def run(self, _input=None):
         job, unit_codings, deserialize = (self.options["job"], self.options["unit_codings"],
                                           self.options["deserialize_codes"])
+
+
+        article_coding = Coding.objects.filter(codingjob=job, sentence__isnull=True)
+        
+        
         t = job.values_table(unit_codings)
         t.addColumn(lambda c : c.status_id, "Status", index=0)
         if unit_codings:
@@ -59,8 +64,10 @@ class GetCodingJobResults(Script):
         t.addColumn(lambda c : c.article.medium.name, "Medium", index=0)
         t.addColumn(lambda c : c.article.medium.name, "Headline", index=0)
         t.addColumn(lambda c : c.article.section, "Section", index=0)
-        t.addColumn(lambda c : c.article.page, "Page", index=0)
-
+        t.addColumn(lambda c : c.article.pagenr, "Page", index=0)
+        
+        t.addColumn(lambda c : c.codingjob.coder.id, "Coder ID", index=0)
+        t.addColumn(lambda c : c.codingjob.coder.username, "Coder username", index=0)
 
         if deserialize:
             deserialize_codes(t)

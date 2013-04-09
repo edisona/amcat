@@ -53,6 +53,14 @@ class GetCodingJobResults(Script):
             t.addColumn(lambda c : c.sentence_id, "Sentence", index=0)
         t.addColumn(lambda c : c.article_id, "Article", index=0)
         t.addColumn(lambda c : c.codingjob_id, "Codingjob", index=0)
+        
+        t.addColumn(lambda c : c.article.date, "Date", index=0)
+        t.addColumn(lambda c : c.article.medium_id, "Medium ID", index=0)
+        t.addColumn(lambda c : c.article.medium.name, "Medium", index=0)
+        t.addColumn(lambda c : c.article.medium.name, "Headline", index=0)
+        t.addColumn(lambda c : c.article.section, "Section", index=0)
+        t.addColumn(lambda c : c.article.page, "Page", index=0)
+
 
         if deserialize:
             deserialize_codes(t)

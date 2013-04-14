@@ -174,7 +174,8 @@ class ArticleSet(AmcatModel):
 
     def deduplicate(self):
         from amcat.scripts.maintenance import deduplicate
-        #TODO: the deduplicate code should go in here!
+        #TODO: the deduplicate code should go in here instead of in the script
+        log.debug("Deduplicating article set {self.id}".format(**locals()))
         deduplicate.DeduplicateScript(articleset=self.id).run()
         
 class ArticleSetArticle(AmcatModel):

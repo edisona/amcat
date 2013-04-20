@@ -26,8 +26,8 @@ documented.
 from collections import OrderedDict
 from itertools import chain
 
-from amcat.models import Role, Privilege, Privilege, Project
-from amcat.models.authorisation import check
+from amcat.models import Project
+#from amcat.models.authorisation import check
 
 from django.core.urlresolvers import reverse, resolve, reverse_lazy
 from django.views.generic.base import View
@@ -226,7 +226,7 @@ OVERVIEW_PROJECT_MENU = (
     (ProjectOverviewItem("My active projects", "my-active-projects"), None),
     (ProjectOverviewItem("All my projects", "all-my-projects"), None),
     (ProjectOverviewItem("All projects", "all-projects", privilege=(
-        Privilege.objects.get(label="view_all_projects", role__projectlevel=False)
+        #Privilege.objects.get(label="view_all_projects", role__projectlevel=False)
     )), None),
 )
 
@@ -238,7 +238,7 @@ USERS_MENU = (
     (MenuItem("Active affiliated users", "affiliated-users"), None),
     (MenuItem("All affiliated users", "all-affiliated-users"), None),
     (MenuItem("All users", "all-users", privilege=(
-        Privilege.objects.get(label="view_users", role__projectlevel=False)
+        #Privilege.objects.get(label="view_users", role__projectlevel=False)
     )), None),
 )
 
@@ -266,10 +266,10 @@ NAVIGATOR_MENU = OrderedDict((
         (MenuItem("My details", "self"), None),
         (MenuItem("Logout", "accounts-logout"), None),
     )),
-    (MenuItem("Developer", role=Role.objects.get(label="developer")), (
-        (MenuItem("API", "api"), None),
-        (MenuItem("Code", "https://code.google.com/p/amcat/"), None),
-        (MenuItem("Logs", "/sentry/"), None),
-    )),
+    #(MenuItem("Developer", role=Role.objects.get(label="developer")), (
+    #    (MenuItem("API", "api"), None),
+    #    (MenuItem("Code", "https://code.google.com/p/amcat/"), None),
+    #    (MenuItem("Logs", "/sentry/"), None),
+    #)),
 ))
 

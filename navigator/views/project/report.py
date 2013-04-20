@@ -46,7 +46,7 @@ class MyProjects(AllProjects):
 
     def get_table(self):
         return (super(MyProjects, self).get_table()
-            .filter(projectrole__user=self.request.user))
+            .filter(projectpermission__user=self.request.user))
 
 class MyActiveProjects(MyProjects):
     title = "My active projects"

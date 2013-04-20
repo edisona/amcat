@@ -35,7 +35,7 @@ import datetime
 
 from api.rest.resources import  ProjectResource, CodebookResource, ArticleMetaResource
 from api.rest.resources import CodingSchemaResource, ArticleSetResource, CodingJobResource
-from api.rest.resources import ProjectRoleResource
+#from api.rest.resources import ProjectRoleResource
 
 #from api.rest import AnalysisResource
 from api.rest.resources import CodebookBaseResource, CodebookCodeResource
@@ -54,7 +54,7 @@ from django.forms import Form, FileField, ChoiceField
 from django.http import HttpResponse
 from django.db import transaction
 
-from amcat.models import Project, Language, Role, ProjectRole, Code, Label
+from amcat.models import Project, Language, Code, Label
 from amcat.models import CodingJob, Codebook, CodebookCode, CodingSchema
 from amcat.models import CodingSchemaField, ArticleSet, Plugin
 
@@ -74,7 +74,7 @@ from amcat.scripts.output.csv_output import TableToSemicolonCSV
 
 from amcat.models.project import LITTER_PROJECT_ID
 
-PROJECT_READ_WRITE = Role.objects.get(projectlevel=True, label="read/write").id
+PROJECT_READ_WRITE = 0#Role.objects.get(projectlevel=True, label="read/write").id
 
 import logging; log = logging.getLogger(__name__)
 

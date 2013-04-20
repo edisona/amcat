@@ -23,12 +23,12 @@ from django.views.generic import View
 from django.views.generic.edit import FormView
 from django.core.urlresolvers import reverse, reverse_lazy
 
-from navigator.forms import UserForm
+#from navigator.forms import UserForm
 from navigator.menu import MenuViewMixin
 
 class UserDetailView(MenuViewMixin, View):
     template = "navigator/user/view.html"
-    form_class = UserForm
+    #form_class = UserForm
 
     def get_success_url():
         return reverse("user", kwargs=dict(user_id=self.request.user.id))

@@ -19,6 +19,8 @@
 """
 This module contains the authentication handling.
 """
+from amcat.tools.caching import cached
+
 from base64 import b64decode
 from django.conf import settings
 from django.contrib.auth import authenticate, login
@@ -88,16 +90,19 @@ class AuthViewMixin(object):
     object_map = None
 
     # Should the objects gathered be passed to the template? (Only for
-    # TemplateView's)
+    # TemplateView's).
     pass_to_template = True
 
-    # Check for these globally defined privileges
-    global_privileges = ()
+    # Assign everything in object_map to view object
+    pass_to_object = True
 
-    # Check for these privileges on the current project. If project_id is
+    # Check for these globally defined permissions
+    global_permissions = ()
+
+    # Check for these permissions on the current project. If project_id is
     # not defined in the url but this variable is, a HTTP 500 will be
     # raised.
-    project_privileges = ()
+    project_permissions = ()
 
     kwargs_mapping = {
         # Model                    URL kwarg               Name in context
@@ -124,11 +129,6 @@ class AuthViewMixin(object):
     # instance level verification instead.
     models_methods = ("PUT",)
 
-    # Define these when subclassing. If a key collides with kwargs_mapping,
-    # these will be used.
-    kwargs_mapping_extra = None
-    method_mapping_extra = None
-
     # Use check_instances to define which models should be checked on instance
     # level. For example, defining a list with User in it will result in
     # a call to user.can_read with HTTP method == GET.
@@ -140,8 +140,6 @@ class AuthViewMixin(object):
 
     def __init__(self, *args, **kwargs):
         self.object_map = {}
-        self.kwargs_mapping_extra = self.kwargs_mapping_extra or {}
-        self.method_mapping_extra = self.method_mapping_extra or {}
 
         super(AuthViewMixin, self).__init__(*args, **kwargs)
 
@@ -159,6 +157,10 @@ class AuthViewMixin(object):
             if not getattr(obj, check_func)(self.request.user):
                 raise PermissionDenied
 
+    @cached
+    def get_kwargs_mapping(self):
+        pass
+
     def get_instances(self):
         """"""
         path_kwargs = _get_path_kwargs(self.request)
@@ -175,20 +177,20 @@ class AuthViewMixin(object):
             except mod.DoesNotExist:
                 raise Http404
 
-    def check_privileges(self):
+    def check_permissions(self):
         # Check global permissions
-        for p in self.global_privileges:
-            if not self.request.user.userprofile.haspriv(p):
+        for p in self.global_permissions:
+            if not self.request.user.has_perm(p):
                 raise PermissionDenied
 
-        # Check if we need to check project privileges, and whether we've got
+        # Check if we need to check project permissions, and whether we've got
         # a project present.
-        if self.project_privileges:
+        if self.project_permissions:
             # Raises KeyError if no project avaiable..
             project = self.object_map[self.kwargs_mapping[models.Project][1]]
 
-        for p in self.project_privileges:
-            if not self.request.user.userprofile.haspriv(p, project=project):
+        for p in self.project_permissions:
+            if not self.request.user.has_perm(p, obj=project):
                 raise PermissionDenied
 
     def get_context_data(self, **kwargs):
@@ -209,7 +211,7 @@ class AuthViewMixin(object):
 
         # Check everything
         self._check_objects(self.object_map.values())
-        self.check_privileges()
+        self.check_permissions()
 
         if request.META["REQUEST_METHOD"] in self.models_methods:
             self._check_objects(self.check_models)

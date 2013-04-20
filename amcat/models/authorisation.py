@@ -31,9 +31,11 @@ from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 
-from amcat.models.project import Project
+from amcat.models.project import Project, get_project_permissions
 from amcat.tools.model import AmcatProjectModel
 from amcat.tools.caching import cached
+
+import logging; log = logging.getLogger(__name__)
 
 AMCAT_APP_LABEL = "amcat"
 
@@ -47,10 +49,7 @@ class ProjectModelBackend(object):
     @cached
     def permissions(cls):
         """Provides a dictionary mapping all possible ids with their codenames"""
-        return dict(Permission.objects.filter(
-            content_type=ContentType.objects.get_for_model(Project),
-            codename__in=dict(Project._meta.permissions).keys()
-        ).values("codename", "id"))
+        return dict(get_project_permissions().values("codename", "id"))
 
     def has_perm(self, user_obj, perm, obj=None):
         if not isinstance(obj, Project):

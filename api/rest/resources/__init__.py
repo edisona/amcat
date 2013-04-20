@@ -39,12 +39,12 @@ from rest_framework.reverse import reverse
 from collections import OrderedDict
 
 MODELS = ['Article', 'ArticleSet', 
-          'Role', 'ProjectRole',
           'Medium', 'Language',
           'CodingJob', 'CodingSchema', 'Codebook', 'CodingSchemaField',
           'CodebookCode', 'CodebookBase', 'Analysis', 'Label', 'CodingSchemaFieldType',
           'django.contrib.auth.models.Group', 'django.contrib.auth.models.Permission',
-          'Plugin', 'Scraper', 'PluginType'
+          'Plugin', 'Scraper', 'PluginType',
+          'django.contrib.contenttypes.models.ContentType'
           ]
 
 # Automatically generate resources for these models

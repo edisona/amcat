@@ -6,11 +6,11 @@ from django.contrib.auth import signals
 from django.contrib.auth.views import password_reset, password_reset_confirm
 
 from accounts.forms import UserPasswordResetForm
-from navigator.forms import AddUserForm
+#from navigator.forms import AddUserForm
 from navigator.utils.auth import create_user
 
 from amcat.models.user import Affiliation
-from amcat.models.authorisation import Role
+#from amcat.models.authorisation import Role
 
 def _login(request, error, username):
     """

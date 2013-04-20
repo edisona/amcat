@@ -20,7 +20,11 @@
 """ORM Module representing projects"""
 
 from __future__ import unicode_literals, print_function, absolute_import
+
+from functools import partial
+
 from django.contrib.auth.models import User, Permission
+from django.utils.functional import SimpleLazyObject
 
 from amcat.tools.model import AmcatModel
 from amcat.tools.toolkit import wrapped
@@ -33,9 +37,25 @@ from amcat.models.articleset import ArticleSetArticle, ArticleSet
 from django.db import models
 from django.db.models import Q
 
+from django.contrib.contenttypes.models import ContentType
 
-ROLEID_PROJECT_READER = 11
 LITTER_PROJECT_ID = 1
+
+def get_default_guest_role():
+    """
+    Returns the lowest possible defined permission (not null, which means the
+    project is not readable for guests.
+    """
+    return Permission.objects.get(
+        content_type=ContentType.objects.get_for_model(Project),
+        codename=Project._meta.permissions[0][0]
+    )
+
+def get_project_permissions():
+    return Permission.objects.filter(
+        content_type=ContentType.objects.get_for_model(Project),
+        codename__in=dict(Project._meta.permissions).keys()
+    )
 
 class Project(AmcatModel):
     """Model for table projects.
@@ -60,7 +80,7 @@ class Project(AmcatModel):
                                     related_name='inserted_project',
                                     editable=False)
 
-    guest_role = models.ForeignKey(Permission, null=True)
+    guest_role = models.ForeignKey(Permission, null=True, default=get_default_guest_role)
 
     active = models.BooleanField(default=True)
     index_default = models.BooleanField(default=True)
@@ -118,11 +138,20 @@ class Project(AmcatModel):
         app_label = 'amcat'
         ordering = ('name',)
         permissions = (
+            # MUST be defined in ascending order: the nth permisson has the same
+            # or more permissions than the (n-1)th permission.
             ("can_view_meta", "Can view meta information"),
             ("can_view", "Can view all information"),
             ("can_edit", "Can add/edit/delete codingjobs, codebooks, .."),
             ("can_manage", "Can edit members, description, ..")
         )
+
+# Can be used to refer to permssions from outside this module.
+PERMISSION_META, PERMISSION_VIEW, PERMISSION_EDIT, PERMISSION_MANAGE = (
+    SimpleLazyObject(get_project_permissions().filter(codename=c).get for c in
+        ("can_view_meta", "can_view", "can_edit", "can_manage")
+    )
+)
 
 ###########################################################################
 #                          U N I T   T E S T S                            #

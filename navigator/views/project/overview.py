@@ -20,6 +20,7 @@
 from navigator.menu import MenuViewMixin
 from navigator.utils.auth import AuthViewMixin
 from navigator.utils.misc import session_pop
+from navigator.forms import ProjectForm
 
 from django.core.urlresolvers import reverse_lazy, reverse
 from django.views.generic.edit import FormView, CreateView
@@ -27,7 +28,10 @@ from django.views.generic.base import TemplateView
 from django.forms.models import modelform_factory
 from django.shortcuts import redirect
 
-from amcat.models import Project, ProjectRole, Role
+from amcat.models.authorisation import ProjectPermission, get_project_permissions
+from amcat.models import Project#, ProjectRole, Role
+
+import logging; log = logging.getLogger(__name__)
 
 """
 This module contains all pages with links to projects (my projects,
@@ -39,7 +43,7 @@ __all__ = ("ProjectOverview", "ProjectEdit", "ProjectAdd")
 PROJECT_EDIT = "project_{project.id}_edited"
 PROJECT_NEW = "project_{project.id}_new"
 
-ProjectForm = modelform_factory(Project, fields=
+ProjectForm = modelform_factory(Project, form=ProjectForm, fields=
     ("name", "description", "guest_role", "active", "index_default")
 )
 
@@ -89,8 +93,10 @@ class ProjectAdd(AuthViewMixin, MenuViewMixin, CreateView):
         p.save()
 
         # Set a role as admin
-        pr = ProjectRole(project=p, user=self.request.user)
-        pr.role = Role.objects.get(projectlevel=True, label='admin')
+        pr = ProjectPermission(
+            permission=get_project_permissions().order_by("-id")[0],
+            project=p, user=self.request.user
+        )
         pr.save()
 
         # Set session variable to indicate the just made project is new
@@ -103,6 +109,10 @@ class ProjectAdd(AuthViewMixin, MenuViewMixin, CreateView):
 
     def get_success_url(self):
         return reverse("project", kwargs=dict(project_id=self.object.id))
+
+    def dispatch(self, *args, **kwargs):
+        res = super(ProjectAdd, self).dispatch(*args, **kwargs)
+        return res
 
     def get_context_data(self, **kwargs):
         ctx = super(ProjectAdd, self).get_context_data(**kwargs)

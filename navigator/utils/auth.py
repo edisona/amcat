@@ -48,6 +48,8 @@ from amcat.tools import sendmail
 import inspect
 import threading
 
+from copy import copy
+
 import logging; log=logging.getLogger(__name__)
 
 def get_request():
@@ -143,9 +145,9 @@ class AuthViewMixin(object):
 
         super(AuthViewMixin, self).__init__(*args, **kwargs)
 
-    def _get_names(self, mod):
+    def _get_names(self, model):
         """Get url-namespace and context name for this model"""
-        return self.kwargs_mapping_extra.get(mod, self.kwargs_mapping[mod])
+        return self.get_kwargs_mapping()[model]
 
     def _get_checkfunc_name(self, http_method):
         return "can_{}".format(self.method_mapping[http_method])
@@ -159,7 +161,11 @@ class AuthViewMixin(object):
 
     @cached
     def get_kwargs_mapping(self):
-        pass
+        return copy(self.kwargs_mapping)
+
+    @cached
+    def get_method_mapping(self):
+        return copy(self.method_mapping)
 
     def get_instances(self):
         """"""
@@ -187,7 +193,7 @@ class AuthViewMixin(object):
         # a project present.
         if self.project_permissions:
             # Raises KeyError if no project avaiable..
-            project = self.object_map[self.kwargs_mapping[models.Project][1]]
+            project = self.object_map[self.get_kwargs_mapping()[models.Project][1]]
 
         for p in self.project_permissions:
             if not self.request.user.has_perm(p, obj=project):
@@ -208,6 +214,9 @@ class AuthViewMixin(object):
     def dispatch(self, request, *args, **kwargs):
         self.request = request
         self.object_map = dict(self.get_instances())
+
+        if self.pass_to_object:
+            self.__dict__.update(self.object_map)
 
         # Check everything
         self._check_objects(self.object_map.values())

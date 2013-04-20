@@ -29,7 +29,7 @@ from django.forms.models import modelform_factory
 from django.shortcuts import redirect
 
 from amcat.models.authorisation import ProjectPermission, get_project_permissions
-from amcat.models import Project#, ProjectRole, Role
+from amcat.models import project, Project
 
 import logging; log = logging.getLogger(__name__)
 
@@ -67,6 +67,7 @@ class ProjectEdit(AuthViewMixin, MenuViewMixin, FormView):
     template_name = "navigator/project/overview/edit.html"
     form_class = ProjectForm
     check_instances = (Project,)
+    project_permissions = (project.PERMISSION_EDIT,)
 
     def form_valid(self, form):
         form.save()

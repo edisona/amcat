@@ -120,6 +120,7 @@ MIDDLEWARE_CLASSES = [
 ]
 
 AUTHENTICATION_BACKENDS = (
+    'amcat.models.authorisation.ProjectModelBackend',
     'django.contrib.auth.backends.ModelBackend',
     #'django.contrib.auth.backends.RemoteUserBackend',
 )

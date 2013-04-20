@@ -52,9 +52,13 @@ class ProjectModelBackend(object):
         return dict(get_project_permissions().values("codename", "id"))
 
     def has_perm(self, user_obj, perm, obj=None):
+        print("HIEJRIEJR")
         if not isinstance(obj, Project):
             # We can't provide any information about non-project permissions
             return None
+
+        print("\n\n\n-------------")
+        print("JDJLKFJDKLJF: %s, %s, %s" % (user_obj, perm, obj))
 
         # Check for app_label
         if "." in perm:

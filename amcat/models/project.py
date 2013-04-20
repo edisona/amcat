@@ -148,10 +148,10 @@ class Project(AmcatModel):
 
 # Can be used to refer to permssions from outside this module.
 PERMISSION_META, PERMISSION_VIEW, PERMISSION_EDIT, PERMISSION_MANAGE = (
-    SimpleLazyObject(get_project_permissions().filter(codename=c).get for c in
-        ("can_view_meta", "can_view", "can_edit", "can_manage")
+    SimpleLazyObject(lambda : get_project_permissions().filter(codename=c).get()) for c in
+        dict(Project._meta.permissions).keys()
     )
-)
+
 
 ###########################################################################
 #                          U N I T   T E S T S                            #
@@ -195,5 +195,11 @@ class TestProject(amcattest.PolicyTestCase):
         p1.articlesets.add(a2)
         self.assertEqual({a1, a2}, set(p1.all_articlesets()))
         self.assertTrue(isinstance(p1.all_articlesets(), QuerySet))
+
+    def test_globals(self):
+        self.assertEqual(PERMISSION_MANAGE.codename, "can_manage")
+        self.assertEqual(PERMISSION_VIEW.codename, "can_view")
+        self.assertEqual(PERMISSION_META.codename, "can_view_meta")
+        self.assertEqual(PERMISSION_EDIT.codename, "can_edit")
 
 

@@ -55,8 +55,8 @@ user_patterns = patterns('',
     #url(r'^add$', user.add, name="user-add"),
 
     url(r'^$', lambda r:redirect(reverse_lazy("affiliated-users")), name="users"),
-    url(r'^active-affiliated$', user.lists.AllAffiliatedUsers.as_view(), name="affiliated-users"),
-    url(r'^all-affiliated$', user.lists.AllActiveAffiliatedUsers.as_view(), name="all-affiliated-users"),
+    url(r'^active-affiliated$', user.lists.AllActiveAffiliatedUsers.as_view(), name="affiliated-users"),
+    url(r'^all-affiliated$', user.lists.AllAffiliatedUsers.as_view(), name="all-affiliated-users"),
     url(r'^all$', user.lists.AllUsers.as_view(), name='all-users'),
 )
 

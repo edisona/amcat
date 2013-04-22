@@ -1,0 +1,8 @@
+{% extends "navigator/base.html" %}
+
+{% block title %}Users overview{% endblock %}
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini" href="{% url affiliated-users %}" type="button">Users</a>
+{% endblock %}
+

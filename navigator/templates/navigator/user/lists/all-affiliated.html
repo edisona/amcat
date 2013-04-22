@@ -1,0 +1,17 @@
+{% extends "navigator/user/base.html" %}
+
+{% block breadcrumbs %}
+ {{ block.super }}
+ <a class="btn btn-mini btn-primary" href="{% url all-affiliated-users %}" type="button">Affiliated (all)</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="noline">Actions</h1>
+<div><a href="" class="btn"><i class="icon icon-plus"></i> Add user</a></div>
+
+<br/>
+<h1>All affilated users</h1>
+{{ table }}
+
+{% endblock %}
+

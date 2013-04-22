@@ -21,15 +21,21 @@
 This module contains all views which render users-lists.
 """
 
+from navigator.menu import MenuViewMixin
+from navigator.utils.auth import AuthViewMixin
+
 from api.rest import Datatable
 from api.rest.resources import UserResource
 
 from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse_lazy
 
-class AllUsers(TemplateView):
+class AllUsers(AuthViewMixin, MenuViewMixin, TemplateView):
+    template_name = "navigator/user/lists/all.html"
+    global_permissions = ("can_view_users",)
+
     def _get_table(self, **filters):
-        return Datatable(UserResource).filter(**filters)
+        return Datatable(UserResource).hide("is_active", "is_staff").filter(**filters)
 
     def get_context_data(self, **kwargs):
         ctx = super(AllUsers, self).get_context_data(**kwargs)
@@ -37,12 +43,16 @@ class AllUsers(TemplateView):
         return ctx
 
 class AllAffiliatedUsers(AllUsers):
+    template_name = "navigator/user/lists/all-affiliated.html"
+    global_permissions = ()
+
     def _get_table(self, **filters):
         return super(AllAffiliatedUsers, self)._get_table(
-            userprofile__affiliation=request.user.userprofile.affiliation, **filters
+            userprofile__affiliation=self.request.user.userprofile.affiliation, **filters
         )
 
 class AllActiveAffiliatedUsers(AllAffiliatedUsers):
+    template_name = "navigator/user/lists/active-affiliated.html"
     def _get_table(self, **filters):
         return super(AllAffiliatedUsers, self)._get_table(is_active=True)
 

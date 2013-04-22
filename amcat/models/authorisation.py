@@ -44,6 +44,10 @@ class ProjectModelBackend(object):
     This is an authorisation backend which takes an Project as `obj` and
     tries to evaluate whether the user has the permission requested.
     """
+    # We need to implement these methods to prevent exceptions when logging in
+    def authenticate(self, username=None, password=None): return None
+    def get_user(self, user_id): return None
+
     @property
     @classmethod
     @cached
@@ -52,13 +56,9 @@ class ProjectModelBackend(object):
         return dict(get_project_permissions().values("codename", "id"))
 
     def has_perm(self, user_obj, perm, obj=None):
-        print("HIEJRIEJR")
         if not isinstance(obj, Project):
             # We can't provide any information about non-project permissions
             return None
-
-        print("\n\n\n-------------")
-        print("JDJLKFJDKLJF: %s, %s, %s" % (user_obj, perm, obj))
 
         # Check for app_label
         if "." in perm:

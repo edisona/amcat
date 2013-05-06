@@ -153,11 +153,16 @@ class AuthViewMixin(object):
         return "can_{}".format(self.method_mapping[http_method])
 
     def _check_objects(self, objs):
-        check_func = self._get_checkfunc_name(self.request.META["REQUEST_METHOD"])
+        check_func_name = self._get_checkfunc_name(self.request.META["REQUEST_METHOD"])
 
         for obj in objs:
-            if not getattr(obj, check_func)(self.request.user):
-                raise PermissionDenied
+            try:
+                check_func = getattr(obj, check_func_name)
+            except AttributeError:
+                log.warning("{obj} does not have {check_func_name} method")
+            else:
+                if not check_func(self.request.user):
+                    raise PermissionDenied
 
     @cached
     def get_kwargs_mapping(self):
@@ -167,9 +172,8 @@ class AuthViewMixin(object):
     def get_method_mapping(self):
         return copy(self.method_mapping)
 
-    def get_instances(self):
+    def get_instances(self, path_kwargs):
         """"""
-        path_kwargs = _get_path_kwargs(self.request)
         for mod in self.check_instances or ():
             kwarg, name = self._get_names(mod)
 
@@ -181,7 +185,7 @@ class AuthViewMixin(object):
             try:
                 yield (name, mod.objects.get(pk=path_kwargs.get(kwarg)))
             except mod.DoesNotExist:
-                raise Http404
+                raise Http404("Could not find {mod} with pk={pk}".format(pk=path_kwargs.get(kwarg), **locals()))
 
     def check_permissions(self):
         # Check global permissions
@@ -213,7 +217,7 @@ class AuthViewMixin(object):
             
     def dispatch(self, request, *args, **kwargs):
         self.request = request
-        self.object_map = dict(self.get_instances())
+        self.object_map = dict(self.get_instances(kwargs))
 
         if self.pass_to_object:
             self.__dict__.update(self.object_map)

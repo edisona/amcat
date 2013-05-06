@@ -127,6 +127,7 @@ AUTHENTICATION_BACKENDS = (
 
 PASSWORD_HASHERS = (
     'django.contrib.auth.hashers.SHA1PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
 )
 
 AUTH_PROFILE_MODULE = 'amcat.UserProfile'

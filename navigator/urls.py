@@ -37,7 +37,6 @@ specific_user_patterns = patterns('',
 
 user_patterns = patterns('',
     url(r'^(?P<user_id>[0-9]+)/', include(specific_user_patterns)),
-    url(r'^self$', user.details.SelfDetailView.as_view(), name="self"),
 
     # Password recovery
     url(r'^change-password$', password_change, name='user-change-password', kwargs= {
@@ -81,6 +80,8 @@ urlpatterns = patterns(
     url(r'^project/', include(project.urls)),
     url(r'^user/', include(user_patterns)),
     url(r'^codingjobs/', include(codingjob_patterns)),
+
+    url(r'^self$', user.details.SelfDetailView.as_view(), name="self"),
 
     # Selection
     url(r'^selection$', 'navigator.views.selection.index', name='selection'),

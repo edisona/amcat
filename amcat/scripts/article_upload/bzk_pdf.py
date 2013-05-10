@@ -49,10 +49,10 @@ class BZKPDFScraper(UploadScript, PDFScraper):
         article_lines = []
         headline = ""
         for i, p in enumerate(self.process_document(self.doc)):
-            if i == 0:
+            
+            index_pattern = re.compile("^[^\(]+\([^\)]+\)..+[0-9]+$")
+            if any([index_pattern.match(line.get_text()) for line in self.get_textlines(p)]):
                 for line in self.get_textlines(p):
-
-
                     pattern = re.compile("([^\(]+)(\([0-9]+\))? \(([^\)]+)\).+")
                     text = line.get_text()
                     result = pattern.search(text)
@@ -80,7 +80,6 @@ class BZKPDFScraper(UploadScript, PDFScraper):
             yield self.getarticle(headline, article_lines)
                         
     def getarticle(self, headline, lines):
-
         article = Document(headline = headline)
         text = ""
         for line in lines[2:]:

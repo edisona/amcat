@@ -175,8 +175,7 @@ def projectlist_favourite(request):
     ids = request.user.get_profile().favourite_projects.all().values_list("id")
     ids = [id for (id, ) in ids]
     if not ids: ids = [-1] # even uglier, how to force an empty table?
-    return _list_projects(request, 'favourite projects', id=ids,
-            projectrole__user=request.user, active=True, overview=True)
+    return _list_projects(request, 'favourite projects', id=ids, active=True, overview=True)
 
 def projectlist_my(request):
     """

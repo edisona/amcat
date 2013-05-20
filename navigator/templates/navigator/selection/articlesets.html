@@ -1,0 +1,38 @@
+<div class="btn-group">
+ <a id="select-all" class="btn">All</a>
+ <a id="select-favourites" class="btn"><i class="icon icon-star"></i> Favourites</a>
+ <a id="select-indexed" class="btn">Indexed</a>
+ <a id="select-codingjobs" class="btn">Codingjobs</a>
+</div>
+
+<script>
+$(function(){
+  var indexed = {{ indexed }};
+  var codingjobs = {{ codingjobs }};
+  var favourites = {{ favourites }};
+
+  var select = function(event){
+      var aids = this;
+
+      $("#id_articlesets").multiselect("uncheckAll");
+      $("#id_articlesets").multiselect("widget").find(":checkbox").each(function(){
+          if (aids.indexOf(parseInt(this.value)) != -1){
+              $(this).parent().show();
+              $(this).click();
+          } else {
+            $(this).parent().hide();
+          }
+      })
+  }
+
+  $("#select-favourites").click(select.bind(favourites));
+  $("#select-indexed").click(select.bind(indexed));
+  $("#select-codingjobs").click(select.bind(codingjobs));
+  $("#select-all").click(function(){
+      $("#id_articlesets").multiselect("widget").find(":checkbox").each(function(){
+          $(this).parent().show();
+          $("#id_articlesets").multiselect("uncheckAll");
+      });
+  });
+});
+</script>

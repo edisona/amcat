@@ -28,6 +28,7 @@ from django.forms.widgets import HiddenInput
 from django.core.exceptions import ObjectDoesNotExist
 
 from httplib2 import iri2uri
+from urllib import unquote
 
 from amcat.scripts.script import Script
 from amcat.models.articleset import ArticleSet
@@ -45,7 +46,6 @@ from django.db import transaction
 import logging; log = logging.getLogger(__name__)
 import traceback
 
-from amcat.scraping.toolkit import safeloops
 
 class ScraperForm(forms.Form):
     """Form for scrapers"""
@@ -234,12 +234,18 @@ class HTTPScraper(Scraper):
             uri = iri2uri(url)
             return self.opener.getdoc(uri, encoding)
 
-    def open(self, url,  encoding=None):
-        try:
-            return self.opener.opener.open(url, encoding)
-        except UnicodeEncodeError:
-            uri = iri2uri(url)
-            return self.opener.opener.open(uri, encoding)
+    def open(self, req, encoding=None):
+        if isinstance(req, str):
+            url = req
+            log.info('Retrieving "{url}"'.format(url = unquote(url)))
+            try:
+                return self.opener.opener.open(url, encoding)
+            except UnicodeEncodeError:
+                uri = iri2uri(url)
+                return self.opener.opener.open(uri, encoding)
+        else:
+            log.info('Retrieving "{url}"'.format(url = req.get_full_url()))
+            return self.opener.opener.open(req, encoding)
      
 
 

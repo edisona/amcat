@@ -58,7 +58,7 @@ DATABASE_OPTIONS = {
    "init_command" : "set transaction isolation level read uncommitted"
 }
 
-ALLOWED_HOSTS = ['.vu.nl'] 
+ALLOWED_HOSTS = ['.vu.nl', 'localhost'] 
 
 
 DATABASES = dict(default=dict(
@@ -239,6 +239,9 @@ if not DEBUG:
 
         MIDDLEWARE_CLASSES.insert(0, 'sentry.client.middleware.SentryResponseErrorIdMiddleware')
 
+    
+    LOG_PREFIX = os.environ.get('DJANGO_LOG_PREFIX', '/tmp/django_')
+
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': True,
@@ -251,7 +254,7 @@ if not DEBUG:
             'default': {
                 'level':LOG_LEVEL,
                 'class':'logging.handlers.RotatingFileHandler',
-                'filename': '/tmp/django_mainlog.log',
+                'filename': '{LOG_PREFIX}mainlog.log'.format(**locals()),
                 'maxBytes': 1024*1024*5, # 5 MB
                 'backupCount': 5,
                 'formatter':'standard',
@@ -259,7 +262,7 @@ if not DEBUG:
             'request_handler': {
                 'level':LOG_LEVEL,
                 'class':'logging.handlers.RotatingFileHandler',
-                'filename': '/tmp/django_requests.log',
+                'filename': '{LOG_PREFIX}requests.log'.format(**locals()),
                 'maxBytes': 1024*1024*5, # 5 MB
                 'backupCount': 5,
                 'formatter':'standard',

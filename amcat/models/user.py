@@ -150,6 +150,15 @@ def create_user(username, first_name, last_name, email, affiliation, language, r
         prof.language = language
         prof.save(force_permissions=True)
 
+        # add "featured" projects to favourites
+        #TODO: #FIXME: UGLY HACK WITH HARD CODED PROJECT IDS
+        for projectid in [1,2,3,5,10,45]:
+            try:
+                p = Project.objects.get(pk=projectid)
+                prof.favourite_projects.add(p)
+            except Project.DoesNotExist:
+                pass
+        
         return u
 
 

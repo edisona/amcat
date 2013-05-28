@@ -227,7 +227,7 @@ def articlesets(request, project, what):
     
 
     tables = [("favourite", '<i class="icon-star"></i> <b>Favourites</b>', dict()),
-              ("own", "Own Sets", dict(project=project, codingjob_set__id='null')),
+              ("own", "Project Sets", dict(project=project, codingjob_set__id='null')),
               ("linked", "Linked Sets", dict(projects_set=project)),
               ("codingjob", "Coding Job Sets", dict()),
               ]
@@ -239,7 +239,9 @@ def articlesets(request, project, what):
         
         ids = request.user.get_profile().favourite_articlesets.filter(Q(project=project.id) | Q(projects_set=project.id))
         ids = [id for (id, ) in ids.values_list("id")]
-        if not ids: ids = [-1] # even uglier, how to force an empty table?
+        if not ids:
+            no_favourites = True
+            ids = [-1] # even uglier, how to force an empty table?
         selected_filter["id"] = ids
     elif what == "codingjob":
         # more ugliness. Filtering the api on codingjob_set__id__isnull=False gives error from filter set
@@ -376,7 +378,10 @@ def selection(request, project):
 
     all_articlesets = project.all_articlesets()
 
-    favourites = json.dumps(tuple(request.user.userprofile.favourite_articlesets.all().values_list("id", flat=True)))
+    favs = tuple(request.user.userprofile.favourite_articlesets.all().values_list("id", flat=True))
+    no_favourites = not favs
+    favourites = json.dumps(favs)
+    
     indexed = json.dumps(tuple(all_articlesets.filter(indexed=True, index_dirty=False).values_list("id", flat=True)))
     indexed_with_dirty = json.dumps(tuple(all_articlesets.filter(indexed=True).values_list("id", flat=True)))
     codingjobs = json.dumps(tuple(CodingJob.objects.filter(articleset__in=all_articlesets).values_list("articleset_id", flat=True)))

@@ -378,7 +378,7 @@ def selection(request, project):
 
     all_articlesets = project.all_articlesets()
 
-    favs = tuple(request.user.userprofile.favourite_articlesets.all().values_list("id", flat=True))
+    favs = tuple(request.user.userprofile.favourite_articlesets.filter(project=project).values_list("id", flat=True))
     no_favourites = not favs
     favourites = json.dumps(favs)
     

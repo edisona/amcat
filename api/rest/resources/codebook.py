@@ -90,11 +90,19 @@ class CodebookHierarchyResource(AmCATResource):
         if len(qs) > MAX_CODEBOOKS:
             return ("Please select at most {} codebook(s)".format(MAX_CODEBOOKS),)
         else:
-            return itertools.chain.from_iterable(self.get_tree(codebook) for codebook in qs)
+            result = itertools.chain.from_iterable(self.get_tree(codebook) for codebook in qs)
+            result = map(convert_treeitem_to_dict, result)
+            return result
+
+
 
     def get(self, request, *args, **kwargs):
         return Response(self._get(request, *args, **kwargs))
 
+
+def convert_treeitem_to_dict(item):
+    children = [convert_treeitem_to_dict(c) for c in item.children]
+    return dict(code_id=item.code_id, children=children, hidden=item.hidden, label=item.label)
 
 class CodebookResource(AmCATResource):
     model = Codebook

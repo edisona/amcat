@@ -60,7 +60,14 @@ class BZK(UploadScript):
                 article.props.pagenr, section = self.get_pagenum(articlepage[0].text)
                 if section:
                     article.props.section = section
-            article.props.medium = get_or_create_medium(div.cssselect("#sourceTitle")[0].text)
+
+            medium_name = get_or_create_medium(div.cssselect("#sourceTitle")[0].text)
+            if medium_name is None:
+                medium_name = "(geen bron)"
+            article.props.medium = get_or_create_medium(medium_name)
+            
+
+            
             article.props.date = readDate(div.cssselect("#articleDate")[0].text)
 
             yield article

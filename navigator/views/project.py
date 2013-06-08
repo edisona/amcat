@@ -246,7 +246,7 @@ def articlesets(request, project, what):
             no_favourites = True
             # lets keep the table with all ids - better some output than none
             #selected_filter["name"] = "This is a really stupid way to force an empty table (so sue me!)"
-        selected_filter["project__id"] = project.id
+
     elif what == "codingjob":
         # more ugliness. Filtering the api on codingjob_set__id__isnull=False gives error from filter set
         ids = ArticleSet.objects.filter(Q(project=project.id) | Q(projects_set=project.id), codingjob_set__id__isnull=False)
@@ -255,12 +255,14 @@ def articlesets(request, project, what):
         selected_filter["id"] = ids
     
     url = reverse('articleset', args=[project.id, 123]) 
-    
-    table =  FavouriteDatatable(resource=ArticleSetResource, rowlink=url.replace("123", "{id}"),
-                                label="article set", set_url=url + "?star=1", unset_url=url+"?star=0")
+
+    table = FavouriteDatatable(resource=ArticleSetResource, label="article set", set_url=url + "?star=1", unset_url=url+"?star=0", rowlink=url.replace("123", "{id}"))
+
     table = table.filter(**selected_filter)
     table = table.hide("project", "index_dirty", "indexed")
 
+    table.url += "&project_for_favourites={project.id}".format(**locals())
+    
     context = project
     menu = PROJECT_MENU
     deleted = session_pop(request.session, "deleted_articleset")

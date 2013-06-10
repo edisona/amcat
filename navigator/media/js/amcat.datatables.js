@@ -32,7 +32,7 @@ _TARGET_ERR = "You can't use number to target columns in columndefs, as " +
 
 _SORTCOL = "iSortCol_";
 _SORTDIR = "sSortDir_";
-_DPROP = "mData_";
+_DPROP = "mDataProp_";
 
 // Default options passed to datatables.
 _AMCAT_DEFAULT_OPTS = {

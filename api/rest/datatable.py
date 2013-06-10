@@ -24,6 +24,7 @@ from django.conf import settings
 
 from django.template import Context
 from django.template.loader import get_template
+from api.rest import filters
 
 import logging; log=logging.getLogger(__name__)
 
@@ -168,10 +169,12 @@ class Datatable(object):
     def get_aoColumns(self):
         """
         Returns a list with (default) columns.
-
-        @param *cols: extra columns
         """
-        return self.options.get('aoColumns', [dict(mData=n) for n in self.fields]) 
+        class jsbool(int):
+            def __repr__(self):
+                return 'true' if self else "false"
+        return self.options.get('aoColumns', [dict(mData=n, bSortable=jsbool(self.can_order_by(n)))
+                                              for n in self.fields])
 
     def get_aoColumnDefs(self):
         """Use this method to override when providing special colums"""
@@ -209,6 +212,17 @@ class Datatable(object):
         """
         return self.copy(hidden=self.hidden | set(columns))
 
+    def can_order_by(self, field):
+        # create filterset for requested view
+        r = self.resource
+        filter_class = filters.AmCATFilterBackend().get_filter_class(r, queryset=r.model.objects.all())
+
+        
+        #print "@@@@", filter_class().filters
+        filter_fields = filter_class().filters.keys()
+        #filter_fields = [f for (f, label) in filter_class().get_ordering_field().choices]
+        return field in filter_fields
+    
     def order_by(self, *fields):
         """
         Order this table by given columns. This will overwrite previous
@@ -221,8 +235,7 @@ class Datatable(object):
                 raise ValueError("Random ordering not yet supported ({})".format(field))
 
             # Check for existance of field
-            field = field[1:] if field.startswith(("+", "-")) else field
-            if field not in self.fields:
+            if not self.can_order_by(field):
                 raise ValueError("Cannot order by field '{}', column does not exist on this table".format(field))
 
         return self.copy(ordering=tuple(fields))

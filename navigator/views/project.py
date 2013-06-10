@@ -238,14 +238,14 @@ def articlesets(request, project, what):
         # (or use api request.user to add only current user's favourite status). But good enough for now...
 
          # they need to be favourte AND still contained in the project
-        ids = project.favourite_articlesets.filter(Q(project=project.id) | Q(projects_set=project.id))
-        ids = [id for (id, ) in ids.values_list("id")]
+        ids = project.favourite_articlesets.filter(Q(project=project.id) | Q(projects_set=project.id)).values_list("id", flat=True)
         if ids:
             selected_filter["id"] = ids
         else:
             no_favourites = True
             # lets keep the table with all ids - better some output than none
             #selected_filter["name"] = "This is a really stupid way to force an empty table (so sue me!)"
+            selected_filter["id"] = ArticleSet.objects.filter(Q(project=project.id) | Q(projects_set=project.id)).values_list("id", flat=True)
 
     elif what == "codingjob":
         # more ugliness. Filtering the api on codingjob_set__id__isnull=False gives error from filter set

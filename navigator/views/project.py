@@ -1053,10 +1053,11 @@ def view_codingjob(request, codingjob, project):
     View and edit a codingjob
     """
     form = forms.CodingJobForm(data=(request.POST or None), instance=codingjob)
-    articles = Datatable(ArticleMetaResource)\
-                    .filter(articleset=codingjob.articleset.id)\
-                    .hide("section", "pagenr", "byline", "metastring", "url")\
-                    .hide("project", "medium", "text", "uuid")
+    articles = (Datatable(ArticleMetaResource)
+                .filter(articlesets_set=codingjob.articleset)
+                .hide("section", "pagenr", "byline", "metastring", "url")
+                .hide("project", "medium", "text", "uuid")
+                )
 
     if form.is_valid() and form.save():
         return redirect(reverse(codingjobs, args=[project.id]))

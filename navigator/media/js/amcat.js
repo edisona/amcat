@@ -55,9 +55,8 @@ $(function(){
    
 });
 
-/* For <a> with a class 'confirm', display confirmation dialog */
-$(function(){
-    $("a.confirm").click(function(event){
+
+function confirm_dialog(event) {
         event.preventDefault();
         
         var dialog = $('' +
@@ -78,10 +77,12 @@ $(function(){
         $(".cancel-button", dialog).click((function(){
             this.modal("hide");
         }).bind(dialog))
-    });
-});
+    }
 
 
+/* For <a> with a class 'confirm', display confirmation dialog */
+$(function(){$("a.confirm").click(confirm_dialog);});
+ 
 amcat.multiselectCheckIfMatches = function(event, matches){
     // used in the multiselects. Shows error message when no match is found in the filtering
     if( !matches.length ){

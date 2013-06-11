@@ -218,9 +218,8 @@ class Datatable(object):
         filter_class = filters.AmCATFilterBackend().get_filter_class(r, queryset=r.model.objects.all())
 
         
-        #print "@@@@", filter_class().filters
         filter_fields = filter_class().filters.keys()
-        #filter_fields = [f for (f, label) in filter_class().get_ordering_field().choices]
+        if field.startswith("-"): field = field[1:]
         return field in filter_fields
     
     def order_by(self, *fields):

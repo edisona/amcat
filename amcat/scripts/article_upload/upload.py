@@ -123,7 +123,7 @@ class UploadScript(Scraper):
 
         try:
             self._cleanup()
-        except:
+        except Exception:
             log.exception("Error on cleaning up")
         return arts
 

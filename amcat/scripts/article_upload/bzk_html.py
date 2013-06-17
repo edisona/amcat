@@ -49,7 +49,7 @@ class BZK(UploadScript):
             divs = _html.cssselect("#articleTable div")
         elif "intranet/rss" in t:
             divs = [div for div in _html.cssselect("#sort div") if "sort_" in div.get('id')]
-
+            
         for div in divs:
             article = HTMLDocument()
             article.props.html = div
@@ -60,13 +60,17 @@ class BZK(UploadScript):
                 article.props.pagenr, section = self.get_pagenum(articlepage[0].text)
                 if section:
                     article.props.section = section
-            article.props.medium = Medium.get_or_create(div.cssselect("#sourceTitle")[0].text)
+            if not div.cssselect("#sourceTitle")[0].text:
+                article.props.medium = Medium.get_or_create("unknown medium")
+            else:
+                article.props.medium = Medium.get_or_create(div.cssselect("#sourceTitle")[0].text)
+            date_str = div.cssselect("#articleDate")[0].text
             try:
-                article.props.date = readDate(div.cssselect("#articleDate")[0].text)
+                article.props.date = readDate(date_str)
             except ValueError:
-                continue
-            yield article
-                    
+                print("parsing date \"{date_str}\" failed".format(**locals()))
+            else:
+                yield article
 
     def get_pagenum(self, text):
         p = re.compile("pagina ([0-9]+)([,\-][0-9]+)?([a-zA-Z0-9 ]+)?")

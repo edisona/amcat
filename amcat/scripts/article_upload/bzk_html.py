@@ -25,7 +25,7 @@ from __future__ import unicode_literals, absolute_import
 from amcat.scripts.article_upload.upload import UploadScript
 from amcat.scraping.document import HTMLDocument
 from amcat.tools.toolkit import readDate
-from amcat.models.medium import get_or_create_medium
+from amcat.models.medium import Medium
 from lxml import html
 import re
 
@@ -60,7 +60,7 @@ class BZK(UploadScript):
                 article.props.pagenr, section = self.get_pagenum(articlepage[0].text)
                 if section:
                     article.props.section = section
-            article.props.medium = get_or_create_medium(div.cssselect("#sourceTitle")[0].text)
+            article.props.medium = Medium.get_or_create(div.cssselect("#sourceTitle")[0].text)
             try:
                 article.props.date = readDate(div.cssselect("#articleDate")[0].text)
             except ValueError:

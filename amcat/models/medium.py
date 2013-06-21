@@ -73,7 +73,7 @@ class Medium(AmcatModel):
         try:
             return cls.get_by_name(medium_name, ignore_case = False)
         except cls.DoesNotExist:
-            return cls.objects.create(medium_name)
+            return cls.objects.create(name = medium_name)
 
     class Meta():
         db_table = 'media'

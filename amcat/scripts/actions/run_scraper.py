@@ -35,9 +35,8 @@ class RunScraperForm(forms.Form):
     scraper = forms.ModelChoiceField(queryset=Scraper.objects.all())
     date = forms.CharField()
 
-class AddProject(Script):
-    """Add a project to the database."""
-
+class RunScraper(Script):
+    """Run a scraper"""
     options_form = RunScraperForm
     output_type = None
 

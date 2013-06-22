@@ -32,13 +32,3 @@ def add(request):
         return redirect(reverse('media'))
         
     return render(request, "navigator/medium/add.html", dict(form=form))
-
-@check_perm("manage_media")
-def add_alias(request):
-    form = MediumAliasForm(request.POST or None)
-    
-    if 'submit' in request.POST and form.is_valid():
-        form.save()
-        return redirect(reverse('media'))
-
-    return render(request, "navigator/medium/add_alias.html", dict(form=form))

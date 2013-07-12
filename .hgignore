@@ -1,0 +1,20 @@
+# use glob syntax.
+syntax: glob
+
+navigator/media/static/*
+*.ropeproject*
+.idea*
+*.cache
+*.lock
+*.html.py
+*.pyc
+*.orig
+*.rej
+*~
+\#*\#
+.\#*
+syntax: regexp
+^\.project$
+syntax: regexp
+^\.pydevproject$
+.coverage

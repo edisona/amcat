@@ -55,7 +55,7 @@ def _convert_doc(file):
     with tempfile.NamedTemporaryFile(suffix=".doc") as f:
         f.write(file.bytes)
         f.flush()
-        text = subprocess.check_output(["antiword", f.name])
+        text = subprocess.check_output(["antiword", "-m", "UTF-8", f.name])
     if not text.strip():
         raise Exception("No text from {antiword?}")
     return text.decode("utf-8")
@@ -89,8 +89,11 @@ class Text(UploadScript):
         metadata = dict((k, v) for (k,v) in self.options.items()
                         if k in ["medium", "headline", "project", "date", "section"])
         if not metadata["date"]:
-            datestring, filename = filename.split("_", 1)
-            metadata["date"] = toolkit.read_date(datestring)
+            try:
+                datestring, filename = filename.split("_", 1)
+                metadata["date"] = toolkit.read_date(datestring)
+            except Exception, e:
+                raise Exception("Cannot parse date from filename {filename}: {e}".format(**locals()))
             
         if not metadata["headline"].strip():
             metadata["headline"] = filename

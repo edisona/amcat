@@ -134,7 +134,7 @@ class featureStream():
     def getFeaturesPerUnit(self, a, unit_level):
         features_unit_dict = collections.defaultdict(lambda:[])
         for par, sent, word, pos in self.getFeatures(a, unit_level):
-            if self.usepos == True: word = "%s (%s)" % (word,pos)
+            if self.usepos == True: word = (word,pos)
             features_unit_dict[(par,sent)].append(word)
         for par, sent in features_unit_dict:
             features = features_unit_dict[(par,sent)]

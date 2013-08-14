@@ -41,6 +41,7 @@ class machineLearning():
         return trainunits, testunits
 
     def thresholded_classify(self, classifier, units, min_prob, unclassified_label='unclassified'):
+        ## currently disabled. Only works with classifiers that allow .prob_classify.
         sets = collections.defaultdict(lambda:set())
         for l in classifier.labels(): sets[l] = set()
 
@@ -197,19 +198,19 @@ if __name__ == '__main__':
     fieldnr = 10
     unit_level = 'article'
     recode_dict = {0:'Samsom',1:'Wilders'}
-    featurestream_parameters = {'headlinefilter':'exclude'} 
+    featurestream_parameters = {'headlinefilter':'exclude'} # headline is excluded in this example, because it mentions the name of the speaker
 
     codedfeaturesperunit, classifier_meta = ml.prepareData(codingjob_ids, fieldnr, unit_level, recode_dict, featurestream_parameters)
 
     print("----------TRAIN AND TEST CLASSIFIERS----------\n")
     # static variables for correct comparison
-    features_pct = 60
-    trainfeature_pct=80
+    trainfeature_pct=80 # train on 80 percent of features, test on 20 percent
 
     print("NAIVE BAYES")
     classifier_type = 'naivebayes'
     vectortransformation = 'binomial'
     featureselection = 'chi2'
+    features_pct = 60 # use 60 percent of all features
     save_classifier=True
     name='naivebayes_test'
 
@@ -220,6 +221,7 @@ if __name__ == '__main__':
     classifier_type = 'multinomialnb'
     vectortransformation = 'count'
     featureselection = 'chi2'
+    features_pct = 60 # use 60 percent of all features
     save_classifier=True
     name='multinomialnaivebayes_test'
     
@@ -228,8 +230,9 @@ if __name__ == '__main__':
     
     print("LINEAR SVC")
     classifier_type = 'linearsvc'
-    vectortransformation = 'tfidf'
+    vectortransformation = 'tfidf' 
     featureselection = 'chi2'
+    features_pct = 60 # use 60 percent of all features
     save_classifier=True
     name='linearsvc_test'
     

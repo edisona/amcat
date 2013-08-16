@@ -20,7 +20,7 @@
 
 from __future__ import unicode_literals, print_function, absolute_import
 
-from featurestream import featureStream, codedFeatureStream, prepareFeatures
+from amcat.tools.featurestream import featureStream, codedFeatureStream, prepareFeaturesCorpus
 from django import db
 
 import re, math, collections, itertools, random, pickle
@@ -148,9 +148,8 @@ class machineLearning():
 
 
     def prepareData(self, codingjob_ids, fieldnr, unit_level, recode_dict=None, featurestream_parameters={}):
-        featurestream = featureStream(**featurestream_parameters)     
-        cfs = codedFeatureStream()
-        cfpu = cfs.streamCodedFeaturesPerUnit(featurestream, codingjob_ids, fieldnr, unit_level, recode_dict)
+        cfs = codedFeatureStream(**featurestream_parameters)
+        cfpu = [cf for cf in cfs.streamCodedFeaturesPerUnit(codingjob_ids, fieldnr, unit_level, recode_dict)]
         classifier_meta = {'featurestream_parameters':featurestream_parameters,
                            'trainingcorpus':{'codingjob_ids':codingjob_ids,
                                              'fieldnr':fieldnr,
@@ -160,27 +159,30 @@ class machineLearning():
         return cfpu, classifier_meta
 
     def trainClassifier(self, codedfeaturesperunit, classifier_meta, classifier_type='multinomialnb', vectortransformation='tfidf', featureselection='chi2', features_pct=50, trainfeature_pct=80, save_classifier=True, name='unnamed_classifier'):
-        pf = prepareFeatures()
+        pf = prepareFeaturesCorpus()
     
         traincfpu, testcfpu = self.splitUnits(codedfeaturesperunit, trainfeature_pct, shuffle=False)
         classifier = self.selectClassifier(classifier_type)
 
         print('TRAINING')
         arts,parnrs,sentnrs,featureslist,labels = zip(*traincfpu) 
-        featureslist = pf.prepareFeatures(featureslist, labels, vectortransformation, featureselection, features_pct)
+        featureslist, prepare_information = pf.prepareFeaturesCorpus(featureslist, labels, vectortransformation, featureselection, features_pct)
         trainunits, trainfeatures = zip(arts,parnrs,sentnrs), zip(featureslist,labels)
         print('- training classifier')
         classifier = classifier.train(trainfeatures)
 
-        print('TESTING')
-        arts,parnrs,sentnrs,featureslist,labels = zip(*testcfpu)
-        featureslist = pf.prepareFeatures(featureslist, labels, vectortransformation, featureselection, features_pct)
-        testcfpu = zip(arts,parnrs,sentnrs,featureslist,labels)
-        print('- testing classifier')
-        testscores = self.test(classifier, testcfpu)
+        if trainfeature_pct < 100:
+            print('TESTING')
+            arts,parnrs,sentnrs,featureslist,labels = zip(*testcfpu)
+            featureslist = pf.prepareNewCorpus(featureslist, prepare_information)
+            testcfpu = zip(arts,parnrs,sentnrs,featureslist,labels)
+            print('- testing classifier')
+            testscores = self.test(classifier, testcfpu)
+        else: testscores = {}
 
         if save_classifier == True:
             classifier_meta['trainingcorpus']['trainunits'] = trainunits
+            classifier_meta['trainingcorpus']['prepare_information'] = prepare_information
             classifier_meta['testscores'] = testscores
             classifier_meta['pipeline_parameters'] ={'classifier_type':classifier_type,
                                                      'vectortransformation':vectortransformation,
@@ -194,11 +196,12 @@ if __name__ == '__main__':
 
     print("----------PREPARE DATA----------\n")
     ml = machineLearning()
-    codingjob_ids = [1395,1396] # speech acts by Wilders and Samsom, coded as respectively wilders (1) or samsom (0).
+    #codingjob_ids = [1395,1396] # large sets
+    codingjob_ids = [1453,1454] # small sets (notice performance difference. LinearSVC performs surprisingly well with small sets)
     fieldnr = 10
     unit_level = 'article'
     recode_dict = {0:'Samsom',1:'Wilders'}
-    featurestream_parameters = {'headlinefilter':'exclude'} # headline is excluded in this example, because it mentions the name of the speaker
+    featurestream_parameters = {'headlinefilter':'exclude'} # headline is excluded in this example, because it mentions the name and party of the speaker
 
     codedfeaturesperunit, classifier_meta = ml.prepareData(codingjob_ids, fieldnr, unit_level, recode_dict, featurestream_parameters)
 
@@ -219,7 +222,7 @@ if __name__ == '__main__':
 
     print("MULTINOMIAL NAIVE BAYES")
     classifier_type = 'multinomialnb'
-    vectortransformation = 'count'
+    vectortransformation = None # use count
     featureselection = 'chi2'
     features_pct = 60 # use 60 percent of all features
     save_classifier=True

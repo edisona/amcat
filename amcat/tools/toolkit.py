@@ -911,6 +911,21 @@ def retry(function, ntries=3, logger=None, *args, **kargs):
                              % (function.__name__, args, kargs, ntries))
 
 
+class RepeatReplacer():
+    """
+    Reduces all repeated characters to single characters. For instance: 'heeeeeeelp' becomes 'help'. Note that 'food' wil also become 'fod'.
+    """
+    def __init__(self):
+        self.reapeat_regexp = re.compile(r'(\w*)(\w)\2(\w*)')
+        self.repl = r'\1\2\3'
+        
+    def replace(self, word):
+        repl_word = self.reapeat_regexp.sub(self.repl, word)
+        if repl_word != word:
+            return self.replace(repl_word)
+        else:
+            return repl_word
+
 ###########################################################################
 ##                     Date(time) functions                              ##
 ###########################################################################

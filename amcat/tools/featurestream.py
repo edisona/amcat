@@ -24,7 +24,7 @@ from amcat.models import Article, Coding, Token, Lemma, Word, AnalysedArticle
 from amcat.tools.toolkit import clean, stripAccents, RepeatReplacer
 from django import db
 
-import nltk
+import nltk, numpy
 import re, math, collections, itertools, random, pickle
 from nltk.metrics import BigramAssocMeasures
 from nltk.probability import FreqDist, ConditionalFreqDist
@@ -49,7 +49,7 @@ class featureStream():
         self.marknegations = marknegations
         
         if use_stemming == True: self.stemmer = nltk.SnowballStemmer(language)
-        else: self.stemmer == None
+        else: self.stemmer = None
         if remove_repeating: self.repeatReplacer = RepeatReplacer()
         else: self.repeatReplacer = None
         if delete_stopwords == True: self.stopwords = nltk.corpus.stopwords.words(language)
@@ -79,6 +79,7 @@ class featureStream():
         if self.use_lemma == True: features = 'lemmata'
         if self.use_id == True: features = features + ' ids'
         if self.postagging == True: features = features + ' with POS tags'
+        if self.ngrams > 1: features = features + ', in ngrams of %s' % self.ngrams
         params = ''
         if self.posfilter: params = params + '\n\tOnly used POS tags: %s' % ', '.join(self.posfilter) 
         if self.stopwords: params = params + '\n\tStopwords were ignored'
@@ -138,7 +139,7 @@ class featureStream():
         #sent = clean(text,25)
         sent = self.tokenizer.tokenize(sent)
         if self.posfilter or (self.postagging == True): tokens = self.tagger.tag(sent)
-        else: tokens = ([w for w in sent], None)
+        else: tokens = [(w, None) for w in sent]
         for word, pos in tokens:
             yield (word, pos)
         
@@ -163,8 +164,8 @@ class featureStream():
         """
         tokens_unit_dict = collections.defaultdict(lambda:[])
         for par, sent, word, pos in self.getTokens(a, unit_level):
-            if self.postagging == True: word = (word,pos)
-            tokens_unit_dict[(par,sent)].append(word)
+            token = (word,pos)
+            tokens_unit_dict[(par,sent)].append(token)
         for par, sent in tokens_unit_dict:
             tokens = tokens_unit_dict[(par,sent)]
             yield (par, sent, tokens)
@@ -177,7 +178,9 @@ class featureStream():
         if self.marknegations: features = self.markNegations(features)
         for feature, pos in self.filterFeatures(features):
             if self.use_id == False: feature = self.processFeature(feature)
-            pf.append((feature, pos))
+            
+            if self.postagging == True: pf.append((feature, pos))
+            else: pf.append(feature)
         if self.ngrams > 1: pf = self.toNgrams(pf, self.ngrams)
         if as_dict == True: pf = collections.Counter(pf)
         return pf
@@ -218,7 +221,7 @@ class featureStream():
         N = len(articles)
         for i, a in enumerate(articles):
             if verbose == True:
-                if i % 2500 == 0: print('%s / %s' % (i,N))
+                if i % 2500 == 0: print('\t%s / %s' % (i,N))
             for paragraph, sentence, tokens in self.getTokensPerUnit(a, unit_level):
                 features = self.prepareFeatures(tokens, as_dict)
                 yield (a, paragraph, sentence, features)
@@ -306,6 +309,7 @@ class codedFeatureStream(featureStream):
                     codings_dict[(article_id, None, None)][fieldnr].append(value) # article
         return codings_dict
 
+
 class binomialTransformer():
     """
     Class to mimic sklearn transformers functionality
@@ -313,84 +317,55 @@ class binomialTransformer():
     def fit(self, csr_matrix):
         None
     def transform(self, csr_matrix):
-        csr_matrix.data = csr_matrix.data > 0
+        csr_matrix.data = csr_matrix.data * 0 + 1
         return csr_matrix
 
-class prepareFeaturesCorpus():
+class prepareVectors():
     """
     Class for vector transformation and feature selection. (Note that it cannot be implemented in featurestream since it requires information of the corpus)
     The transformations are performed using the sklearn package. 
     (currently only chi2 is supported for feature selection. Other options (e.g., freq) can be added) 
     """
-    def prepareFeaturesCorpus(self, featureslist, featuresclass=None, vectortransformation=None, featureselection=None, features_pct=50, returnasmatrix=False):
+    def prepareVectors(self, featureslist, classlist=None, vectortransformation=None, featureselection=None, features_pct=50, returnasmatrix=False, filter_features=None):
         """
-        Takes a list of dictionaries (representing units), in which keys are words and values their occurence within the unit. Two types of transformations can be issued. Vectortransformation changes the representation of the vector, for instance using tfidf. Featureselection selects a percentage of the featurelist (features_pct) based on a score for the relevance of the feature (e.g., chi2). Note that for certain feature selection methods (e.g., chi2), a list of class labels to match the units in the featureslist needs to be provided.
+        Takes a list of dictionaries (representing units), in which keys are words and values their occurence within the unit. Vector can be transformed to tfidf or binomial. Featureselection selects a percentage of the featurelist (features_pct) based on a score for the relevance of the feature (e.g., chi2). Note that for certain feature selection methods (e.g., chi2), a list of class labels to match the units in the featureslist needs to be provided. If filter_features is a list of feature names, only these features are used.
 
-        A tuple is returned with the features and the preparation information:
-        - The features are returned as a list of dictionaries, or as a sparse matrix.
-        - The preparation information can be used in self.prepareNewUnits() for preparation of new units (not from this corpus)
-        
+        A tuple is returned with the features (as dictionary or sparse matrix) and a list of the selected features. (these selected features can be used as input for 'filter_features' to match new vectors to the vectors on which a classifier is trained) 
         """
         dv = DictVectorizer()
         fmatrix = dv.fit_transform(featureslist)
         fnames = dv.feature_names_
-        if featureselection:
-            print('- Selecting features')
-            fmatrix, fnames = self.selectFeatures(fmatrix, fnames, featureselection, featuresclass, features_pct)
-            dv.feature_names_ = fnames # store new index of featurenames for dv.inverse_transform
         if vectortransformation:
-            print('- Extracting features')
-            fmatrix, vtransformer = self.transformVectors(fmatrix, vectortransformation)
-        else: vtransformer = None
-        prepare_information = (fnames, vtransformer)
-        if returnasmatrix == False: return (dv.inverse_transform(fmatrix), prepare_information)
-        else: return (fmatrix, prepare_information)
+            print('- Transforming vectors')
+            fmatrix = self.transformVectors(fmatrix, vectortransformation)
+        if featureselection and not filter_features:
+            print('- Selecting features')
+            fmatrix, fnames = self.selectFeatures(fmatrix, fnames, featureselection, classlist, features_pct)
+            dv.feature_names_ = fnames # store new index of featurenames for dv.inverse_transform
+        if filter_features:
+            print('- Filtering features')
+            fmatrix, fnames = self.filterFeatures(fmatrix, fnames, filter_features)
+            dv.feature_names_ = fnames
+        if returnasmatrix == False: return (dv.inverse_transform(fmatrix), fnames)
+        else: return (fmatrix, fnames)
 
-    def selectFeatures(self, fmatrix, fnames, method, featuresclass, features_pct):
+    def selectFeatures(self, fmatrix, fnames, method, classlist, features_pct):
         if method == 'chi2': sk = SelectPercentile(chi2, features_pct)
-        fmatrix = sk.fit_transform(fmatrix, featuresclass)
+        fmatrix = sk.fit_transform(fmatrix, classlist)
         selectedfeatures = zip(sk.get_support(), fnames)
         fnames = [feature for selected, feature in selectedfeatures if selected == True]
         return (fmatrix, fnames)
   
-    def transformVectors(self, fmatrix, method):
-        if method == 'tfidf': transformer = TfidfTransformer()
-        if method == 'binomial': transformer = binomialTransformer()    
-        fit = transformer.fit(fmatrix)
+    def transformVectors(self, fmatrix, vectortransformation):
+        if vectortransformation == 'tfidf': transformer = TfidfTransformer()
+        if vectortransformation == 'binomial': transformer = binomialTransformer()
+        transformer.fit(fmatrix)
         fmatrix = transformer.transform(fmatrix)
-        return (fmatrix, transformer)
+        return fmatrix
 
-    def prepareNewCorpus(self, featureslist, prepare_information, match_features=True, refit_transformer=True, returnasmatrix=False):
-        trained_features, vtransformer = prepare_information
-        dv = DictVectorizer()
-        featureslist = list(featureslist)
-        if match_features == False and refit_transformer == False:
-            print('Cannot use same transformer without matching features. Transformer will be refitted')
-            refit_transformer = True    
-        if match_features == True:
-            featureslist.append({tf:1 for tf in trained_features}) ## fake unit with all trained features in corpus (for indexing in sparse matrix)
-            
-        fmatrix = dv.fit_transform(featureslist)
-        if match_features:
-            print('- Matching features')
-            fnames = dv.feature_names_
-            fmatrix, fnames = self.matchFeatures(fmatrix, fnames, trained_features)
-            dv.feature_names_ = fnames
-        if vtransformer:
-            print('- Extracting features')
-            if refit_transformer == True: vtransformer.fit(fmatrix)
-            fmatrix = vtransformer.transform(fmatrix)
-        if returnasmatrix == False: return dv.inverse_transform(fmatrix)
-        else: return fmatrix
-
-    def matchFeatures(self, fmatrix, fnames, trained_features):
-        featureindex = [i for i in range(0,len(fnames)) if fnames[i] in trained_features]
-        fmatrix = fmatrix[:,featureindex] # selecting and ordering columns (features) to match trainigsdata fmatrix.
-        fmatrix = fmatrix[:-1,:] # deleting fake unit
-        fnames = trained_features # just pointing that one out
-        return (fmatrix, fnames)        
-
-
-
-
- 
+    def filterFeatures(self, fmatrix, fnames, filter_features):
+        matching = set(fnames) & set(filter_features)
+        featureindex = {fnames.index(m):m for m in matching}
+        fmatrix = fmatrix[:,featureindex.keys()]
+        fnames = featureindex.values()
+        return (fmatrix, fnames) 

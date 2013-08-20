@@ -20,12 +20,11 @@
 
 from __future__ import unicode_literals, print_function, absolute_import
 
-from amcat.tools.featurestream import featureStream, codedFeatureStream, prepareFeaturesCorpus
+from amcat.tools.featurestream import featureStream, codedFeatureStream, prepareVectors
 from django import db
 
 import re, math, collections, itertools, random, pickle
 
-# REQUIRES 
 import nltk, nltk.classify.util, nltk.metrics
 from nltk.classify import NaiveBayesClassifier
 from nltk.classify.scikitlearn import SklearnClassifier # NLTK wrapper for sklearn
@@ -158,23 +157,23 @@ class machineLearning():
         random.shuffle(cfpu)
         return cfpu, classifier_meta
 
-    def trainClassifier(self, codedfeaturesperunit, classifier_meta, classifier_type='multinomialnb', vectortransformation='tfidf', featureselection='chi2', features_pct=50, trainfeature_pct=80, save_classifier=True, name='unnamed_classifier'):
-        pf = prepareFeaturesCorpus()
+    def trainClassifier(self, codedfeaturesperunit, classifier_meta, classifier_type='multinomialnb', vectortransformation='tfidf', featureselection='chi2', features_pct=50, train_pct=80, save_classifier=True, name='unnamed_classifier'):
+        pf = prepareVectors()
     
-        traincfpu, testcfpu = self.splitUnits(codedfeaturesperunit, trainfeature_pct, shuffle=False)
+        traincfpu, testcfpu = self.splitUnits(codedfeaturesperunit, train_pct, shuffle=False)
         classifier = self.selectClassifier(classifier_type)
 
         print('TRAINING')
-        arts,parnrs,sentnrs,featureslist,labels = zip(*traincfpu) 
-        featureslist, prepare_information = pf.prepareFeaturesCorpus(featureslist, labels, vectortransformation, featureselection, features_pct)
+        arts,parnrs,sentnrs,featureslist,labels = zip(*traincfpu)
+        featureslist, selected_features = pf.prepareVectors(featureslist, labels, vectortransformation, featureselection, features_pct)
         trainunits, trainfeatures = zip(arts,parnrs,sentnrs), zip(featureslist,labels)
         print('- training classifier')
         classifier = classifier.train(trainfeatures)
 
-        if trainfeature_pct < 100:
+        if train_pct < 100:
             print('TESTING')
             arts,parnrs,sentnrs,featureslist,labels = zip(*testcfpu)
-            featureslist = pf.prepareNewCorpus(featureslist, prepare_information)
+            featureslist, fnames = pf.prepareVectors(featureslist, vectortransformation=vectortransformation, filter_features=selected_features)
             testcfpu = zip(arts,parnrs,sentnrs,featureslist,labels)
             print('- testing classifier')
             testscores = self.test(classifier, testcfpu)
@@ -182,7 +181,7 @@ class machineLearning():
 
         if save_classifier == True:
             classifier_meta['trainingcorpus']['trainunits'] = trainunits
-            classifier_meta['trainingcorpus']['prepare_information'] = prepare_information
+            classifier_meta['trainingcorpus']['selected_features'] = selected_features
             classifier_meta['testscores'] = testscores
             classifier_meta['pipeline_parameters'] ={'classifier_type':classifier_type,
                                                      'vectortransformation':vectortransformation,
@@ -207,7 +206,7 @@ if __name__ == '__main__':
 
     print("----------TRAIN AND TEST CLASSIFIERS----------\n")
     # static variables for correct comparison
-    trainfeature_pct=80 # train on 80 percent of features, test on 20 percent
+    train_pct=80 # train on 80 percent of units, test on 20 percent
 
     print("NAIVE BAYES")
     classifier_type = 'naivebayes'
@@ -218,26 +217,26 @@ if __name__ == '__main__':
     name='naivebayes_test'
 
     ml.trainClassifier(codedfeaturesperunit, classifier_meta,
-                    classifier_type, vectortransformation, featureselection, features_pct, trainfeature_pct, save_classifier, name)
+                    classifier_type, vectortransformation, featureselection, features_pct, train_pct, save_classifier, name)
 
     print("MULTINOMIAL NAIVE BAYES")
     classifier_type = 'multinomialnb'
     vectortransformation = None # use count
     featureselection = 'chi2'
-    features_pct = 60 # use 60 percent of all features
+    features_pct = 60 
     save_classifier=True
     name='multinomialnaivebayes_test'
     
     ml.trainClassifier(codedfeaturesperunit, classifier_meta,
-                classifier_type, vectortransformation, featureselection, features_pct, trainfeature_pct, save_classifier, name)
+                classifier_type, vectortransformation, featureselection, features_pct, train_pct, save_classifier, name)
     
     print("LINEAR SVC")
     classifier_type = 'linearsvc'
     vectortransformation = 'tfidf' 
     featureselection = 'chi2'
-    features_pct = 60 # use 60 percent of all features
+    features_pct = 60 
     save_classifier=True
     name='linearsvc_test'
     
     ml.trainClassifier(codedfeaturesperunit, classifier_meta,
-                classifier_type, vectortransformation, featureselection, features_pct, trainfeature_pct, save_classifier, name)
+                classifier_type, vectortransformation, featureselection, features_pct, train_pct, save_classifier, name)

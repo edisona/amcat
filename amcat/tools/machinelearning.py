@@ -32,15 +32,22 @@ from sklearn.svm import LinearSVC
 from sklearn.naive_bayes import MultinomialNB
 
 class machineLearning():
-    def splitUnits(self, units, trainfeature_pct=70, shuffle=True):
+    def splitUnits(self, units, train_pct=70, shuffle=True):
+        """
+        splits a list into two lists. 
+        """
         if shuffle == True: random.shuffle(units)
-        splitn = int(len(units)*(trainfeature_pct/100.0))
+        splitn = int(len(units)*(train_pct/100.0))
         trainunits, testunits = units[:splitn], units[splitn:]
         print("train on %d units, test on %d units" % (len(trainunits), len(testunits)))
         return trainunits, testunits
 
     def thresholded_classify(self, classifier, units, min_prob, unclassified_label='unclassified'):
-        ## currently disabled. Only works with classifiers that allow .prob_classify.
+        """
+        Currently disabled. Only works with classifiers that allow .prob_classify.
+
+        Instead of directly classifying, only classifies if the class with the highest probability has a minimum probability of min_prob. Otherwise, un'unclassified_label' is used to classify.
+        """
         sets = collections.defaultdict(lambda:set())
         for l in classifier.labels(): sets[l] = set()
 
@@ -56,6 +63,9 @@ class machineLearning():
         return sets
 
     def classify(self, classifier, units):
+        """
+        Classifies a list of units based on the prediction of the classifier.
+        """
         sets = collections.defaultdict(lambda:set())
         for l in classifier.labels(): sets[l] = set()
 
@@ -66,12 +76,18 @@ class machineLearning():
         return sets
 
     def getReferenceSets(self, units):
+        """
+        Classifiers a list of units based on the provided coded values, for comparison with the results of the classifier.
+        """
         sets = collections.defaultdict(lambda:set())
         for a, parnr, sentnr, features, label in units:
             sets[label].add((a,parnr,sentnr))
         return sets
                                                      
     def test(self, classifier, testunits):
+        """
+        Tests and reports the performance of the classifier 
+        """
         testsets = self.classify(classifier, testunits)
         refsets = self.getReferenceSets(testunits)
 
@@ -104,6 +120,9 @@ class machineLearning():
         return testscores
 
     def save(self, name, classifier, classifier_meta):
+        """
+        Save a trained classifier and the classifier_meta, which contains the used parameters and testscores. 
+        """
         c_filename = "/tmp/%s.pickle" % name
         cmeta_filename = "/tmp/%s_meta.pickle" % name
         print('\nSAVING CLASSIFIER TO %s AND %s\n' % (c_filename, cmeta_filename))
@@ -115,6 +134,9 @@ class machineLearning():
         f_meta.close()
              
     def load(self, name):
+        """
+        Loads a pre-trained classifier and the classifier_meta
+        """
         c_filename = "/tmp/%s.pickle" % name
         cmeta_filename = "/tmp/%s_meta.pickle" % name
         print('\nLOADING CLASSIFIER: %s AND %s' % (c_filename, cmeta_filename))
@@ -127,26 +149,27 @@ class machineLearning():
         return classifier, classifier_meta
 
     def balanceLabelProbabilities(self, classifier):
-        # Fool a naive bayes classifier into balanced class probabilities.
+        """
+        Fool a naive bayes classifier into balanced class probabilities. Currently not implemented. 
+        """
         fd = FreqDist()
         for l in classifier.labels(): fd.inc(l) # fake a balanced freq distribution of labels
         classifier._label_probdist._freqdist = fd # insert balanced freq distribution into classifier's label/prior probability distribution
         return classifier
 
-    def train(self, trainfeatures, method):
-        features = [(features, label) for a, parnr, sentnr, features, label in trainfeatures]
-        if method == 'naiveBayes': classifier = NaiveBayesClassifier.train(features)
-        if method == 'SVM': classifier = svm.SvmClassifier.train(features)
-        return classifier
-
     def selectClassifier(self, classifier_type):
+        """
+        Selects a classifier
+        """
         if classifier_type == 'naivebayes': classifier = NaiveBayesClassifier
         if classifier_type == 'multinomialnb': classifier = SklearnClassifier(MultinomialNB())
         if classifier_type == 'linearsvc': classifier = SklearnClassifier(LinearSVC())
         return classifier
 
-
     def prepareData(self, codingjob_ids, fieldnr, unit_level, recode_dict=None, featurestream_parameters={}):
+        """
+        Uses the featurestream module to prepare data from amcat for machinelearning.
+        """
         cfs = codedFeatureStream(**featurestream_parameters)
         cfpu = [cf for cf in cfs.streamCodedFeaturesPerUnit(codingjob_ids, fieldnr, unit_level, recode_dict)]
         classifier_meta = {'featurestream_parameters':featurestream_parameters,
@@ -158,6 +181,9 @@ class machineLearning():
         return cfpu, classifier_meta
 
     def trainClassifier(self, codedfeaturesperunit, classifier_meta, classifier_type='multinomialnb', vectortransformation='tfidf', featureselection='chi2', features_pct=50, train_pct=80, save_classifier=True, name='unnamed_classifier'):
+        """
+        Uses the prepared data (codedfeaturesperunit and classifier_meta) to train a classifier.
+        """
         pf = prepareVectors()
     
         traincfpu, testcfpu = self.splitUnits(codedfeaturesperunit, train_pct, shuffle=False)
@@ -196,7 +222,7 @@ if __name__ == '__main__':
     print("----------PREPARE DATA----------\n")
     ml = machineLearning()
     #codingjob_ids = [1395,1396] # large sets
-    codingjob_ids = [1453,1454] # small sets (notice performance difference. LinearSVC performs surprisingly well with small sets)
+    codingjob_ids = [1453,1454] # small sets
     fieldnr = 10
     unit_level = 'article'
     recode_dict = {0:'Samsom',1:'Wilders'}

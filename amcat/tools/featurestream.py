@@ -39,7 +39,7 @@ class featureStream():
     At __init__ the arguments are passed for what features should be used (i.e. words or lemma, strings or id's, ngrams). The 'featurestream' function can then be used to yield these features for a given aricleset and unit level.
     """
     
-    def __init__(self, source='rawtext', language='dutch', use_lemma=True, use_id=True, use_stemming=True, remove_repeating=False, delete_stopwords=False, postagging=True, posfilter=None, ngrams=1, lowercase=True, marknegations=False, headlinefilter=None, reportparameters=True):
+    def __init__(self, source='rawtext', language='dutch', use_lemma=True, use_id=True, use_stemming=True, remove_repeating=False, delete_stopwords=False, postagging=True, posfilter=None, ngrams=1, lowercase=True, zeropunctuation=True, marknegations=False, headlinefilter=None, reportparameters=True):
         self.source = source
         self.posfilter = posfilter
         self.ngrams = ngrams
@@ -47,6 +47,7 @@ class featureStream():
         self.headlinefilter = headlinefilter
         self.lowercase = lowercase
         self.marknegations = marknegations
+        self.zeropunctuation = zeropunctuation
         
         if use_stemming == True: self.stemmer = nltk.SnowballStemmer(language)
         else: self.stemmer = None
@@ -136,7 +137,7 @@ class featureStream():
         Sentences are tokenized (and tagged)
         """
         sent = stripAccents(text)
-        #sent = clean(text,25)
+        if self.zeropunctuation == True: sent = clean(text,25)
         sent = self.tokenizer.tokenize(sent)
         if self.posfilter or (self.postagging == True): tokens = self.tagger.tag(sent)
         else: tokens = [(w, None) for w in sent]

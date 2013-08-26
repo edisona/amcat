@@ -216,9 +216,20 @@ class featureStream():
         if self.repeatReplacer: feature = self.repeatReplacer.replace(feature)
         return feature
 
-    def streamFeaturesPerUnit(self, articleset_id=None, article_ids=None, unit_level='sentence', as_dict=True, verbose=True):
+    def getArticles(self, articleset_id, article_ids, offset, batchsize):
         if article_ids: articles = Article.objects.select_related('sentences','analysedarticle_set').filter(pk__in=article_ids)
         else: articles = Article.objects.select_related('sentences','analysedarticle_set').filter(articlesets_set=articleset_id)
+        if offset:
+            if batchsize:
+                batchlimit = offset + batchsize
+                articles = articles[offset:batchlimit]
+            else: articles = articles[offset:]
+        else:
+            if batchsize: articles = articles[:batchsize]
+        return articles
+
+    def streamFeaturesPerUnit(self, articleset_id=None, article_ids=None, unit_level='sentence', as_dict=True, offset=None, batchsize=None, verbose=True):
+        articles = self.getArticles(articleset_id, article_ids, offset, batchsize)
         N = len(articles)
         for i, a in enumerate(articles):
             if verbose == True:
@@ -327,7 +338,7 @@ class prepareVectors():
     The transformations are performed using the sklearn package. 
     (currently only chi2 is supported for feature selection. Other options (e.g., freq) can be added) 
     """
-    def prepareVectors(self, featureslist, classlist=None, vectortransformation=None, featureselection=None, features_pct=50, returnasmatrix=False, filter_features=None):
+    def prepareVectors(self, featureslist, classlist=None, vectortransformation=None, featureselection=None, features_pct=50, returnasmatrix=False, filter_features=None, returnindexed=False):
         """
         Takes a list of dictionaries (representing units), in which keys are words and values their occurence within the unit. Vector can be transformed to tfidf or binomial. Featureselection selects a percentage of the featurelist (features_pct) based on a score for the relevance of the feature (e.g., chi2). Note that for certain feature selection methods (e.g., chi2), a list of class labels to match the units in the featureslist needs to be provided. If filter_features is a list of feature names, only these features are used.
 
@@ -347,7 +358,9 @@ class prepareVectors():
             print('- Filtering features')
             fmatrix, fnames = self.filterFeatures(fmatrix, fnames, filter_features)
             dv.feature_names_ = fnames
-        if returnasmatrix == False: return (dv.inverse_transform(fmatrix), fnames)
+        if returnasmatrix == False:
+            if returnindexed == True: dv.feature_names_ = range(0,len(fnames))
+            return (dv.inverse_transform(fmatrix), fnames)
         else: return (fmatrix, fnames)
 
     def selectFeatures(self, fmatrix, fnames, method, classlist, features_pct):

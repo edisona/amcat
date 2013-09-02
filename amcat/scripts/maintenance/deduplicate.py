@@ -98,6 +98,7 @@ class DeduplicateScript(Script):
         connection.queries = []
         
         articleset = self.options['articleset']
+        print("_run_date for {d}".format(d=date))
         log.info("Deduplicating for articleset '{articleset}' at {date}".format(**locals()))
 
         articles = articleset.articles.filter(date__gte = date, date__lt = date + timedelta(days=1))

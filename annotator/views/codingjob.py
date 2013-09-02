@@ -23,7 +23,7 @@ from django.shortcuts import render
 
 from amcat.models.coding import codingtoolkit
 from amcat.models import Code, Coding, CodingJob, CodedArticle
-from amcat.models import Function, CodingSchemaField
+from amcat.models import Function, CodingSchemaField, CodingSchemaFieldType
 from amcat.models import Article, Sentence
 
 from django import forms
@@ -40,6 +40,8 @@ from amcat.tools.djangotoolkit import db_supports_distinct_on
 from itertools import chain
 
 import logging; log = logging.getLogger(__name__)
+
+CODEBOOK_TYPE = CodingSchemaFieldType.objects.get(name="Codebook")
 
 def index(request, codingjobid):
     """returns the HTML for the main annotator page"""
@@ -99,6 +101,14 @@ def get_value_labels(coding):
             label = f.serialiser.value_label(value)
         yield f, label
 
+def get_code_ids(coding):
+    for val in coding.values.select_related("field__fieldtype", "value__strval", "value__intval"):
+        try:
+            code = val.value
+        except Code.DoesNotExist: # codebook change
+            continue
+
+
 def articleCodings(request, codingjobid, articleid):
     """returns the article codings of an article as HTML form"""
     article = Article.objects.get(id=articleid)
@@ -107,6 +117,7 @@ def articleCodings(request, codingjobid, articleid):
 
     if codings:
         values = {"field_%i" % f.id : label for (f, label) in get_value_labels(codings)}
+        get_code_ids(codings)
     else:
         values = {}
     articlecodingform = codingtoolkit.CodingSchemaForm(codingjob.articleschema, values)
@@ -151,12 +162,13 @@ def _build_field(field, language):
     result = {
         'fieldname' : field.label,
         'id' : str(field.id),
-        'isOntology' : (unicode(field.fieldtype) == 'DB ontology'),
+        'isOntology' : field.fieldtype == CODEBOOK_TYPE,
         'showAll' : None
     }
 
     if field.codebook:
         result['items-key'] = field.codebook_id
+        result["split_codebook"] = field.split_codebook
     else:
         result['items'] = list(getFieldItems(field, language))
 
@@ -169,12 +181,30 @@ def _get_functions(codebook, code):
         "parentid" : cc.parent_id
     } for cc in codebook.get_codebookcodes(code)]
 
-def _build_ontology(codebook, language):
+def _build_ontology(codebook, language, fallback=True):
     return [{
         "value" : code.id,
-        "label" : code.get_label(language),
-        "functions" : _get_functions(codebook, code) 
+        "label" : code.get_label(language, fallback=fallback),
+        "functions" : _get_functions(codebook, code),
+        "ordernr" : codebook.get_codebookcode(code).ordernr
     } for code in codebook.get_codes()]
+
+def _get_highlighters(schemas):
+    for s in schemas:
+        for h in s.highlighters.all():
+            yield (h, s.highlight_language)
+
+def _get_highlight_labels(schemas):
+    """Returns set with (codebook, language)."""
+    for cb, language in set(_get_highlighters(schemas)):
+        _language = [language] if language else []
+        cb.cache_labels(*_language)
+
+        for code in cb.get_codes():
+            if language:
+                yield code.get_label(language, fallback=False)
+            else:
+                yield code.get_label()
 
 def fields(request, codingjobid):
     """get the fields of the articleschema and unitschema as JSON"""
@@ -185,7 +215,7 @@ def fields(request, codingjobid):
     fields = CodingSchemaField.objects.select_related(
         # Fields used later in _build_fields and _build_ontologies
         "codebook", "fieldtype", "codingschema"
-    ).filter(
+    ).prefetch_related("codingschema__highlighters").filter(
         Q(codingschema__codingjobs_unit=codingjob)|
         Q(codingschema__codingjobs_article=codingjob)
     )
@@ -200,9 +230,12 @@ def fields(request, codingjobid):
         codebook.cache(select_related=("function",))
         codebook.cache_labels()
 
+    labels = _get_highlight_labels(set([f.codingschema for f in fields]))
+
     out = DictToJson().run({
         'fields' : [_build_field(f, language) for f in fields],
-        'ontologies': {cb.id : _build_ontology(cb, language) for cb in codebooks.values()}
+        'ontologies': {cb.id : _build_ontology(cb, language) for cb in codebooks.values()},
+        'highlight_labels' : list(set(labels) - {None,})
     })
 
     return writeResponse(out)

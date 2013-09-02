@@ -23,10 +23,9 @@ Script to be run daily for data input (scraping, preprocessing etc.
 
 from datetime import date, timedelta
 
-import logging;
-from amcat.scraping.controller import RobustController
+import logging;log = logging.getLogger(__name__)
 
-log = logging.getLogger(__name__)
+from amcat.scraping.controller import RobustController
 
 from django import forms
 
@@ -142,7 +141,7 @@ class DailyScript(Script):
         
 def setup_logging():
     from amcat.tools.amcatlogging import AmcatFormatter
-    loggers = (logging.getLogger("amcat.scraping"), logging.getLogger("amcat.scripts.maintenance.daily"), logging.getLogger("scraping"))
+    loggers = (logging.getLogger("amcat.scraping"), logging.getLogger(__name__), logging.getLogger("scrapers"))
     d = date.today()
     handlers = (logging.FileHandler("/home/amcat/log/daily_{d.year:04d}-{d.month:02d}-{d.day:02d}.txt".format(**locals())), logging.StreamHandler())
     formatter = AmcatFormatter(date = True)

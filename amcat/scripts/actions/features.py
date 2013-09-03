@@ -34,11 +34,7 @@ from amcat.tools.featurestream import featureStream
 
 class Features(Script):
     """
-    Get features from articlesets. Written to be called from R.
-    
-    If use_index == True, this action has a very silly output. First the table is filled with the features per unit, and after that it is filled with the featureindex, containing the labels for each word and pos. The reason is that this allows the data to be uploaded to R in a single table.
-
-    Note that if use_index == True and offset/batchsize are used to get data per batch, the index can only be used with the batch for which it was made. 
+    Get features from articlesets. 
     """
 
     class options_form(forms.Form):
@@ -46,47 +42,61 @@ class Features(Script):
         unit_level = forms.CharField()
         offset = forms.IntegerField()
         batchsize = forms.IntegerField()
-        use_index = forms.BooleanField(initial=True)
+        min_docfreq = forms.IntegerField(initial=0) ## usefull for reducing size of output, but perhaps this problem should be for the user and not the server.
     output_type = Table
     
     def run(self, _input=None):
-        use_index = self.options['use_index']
         articleset_id = self.options['articleset'].id
         unit_level = self.options['unit_level']
+        min_docfreq = self.options['min_docfreq']
         offset = self.options['offset']
         batchsize = self.options['batchsize']
         
-        featurestream_parameters = {'delete_stopwords':True, 'posfilter':['noun','NN']}
+        featurestream_parameters = {'delete_stopwords':True, 'posfilter':['noun','NN','verb']}
         f = featureStream(**featurestream_parameters)
 
         rows = []
         index, index_counter = {}, 1
+        docfreq = collections.defaultdict(lambda:0)
         for a,parnr,sentnr,features in f.streamFeaturesPerUnit(articleset_id=articleset_id, unit_level=unit_level, offset=offset, batchsize=batchsize, verbose=True):
             for feature, count in features.iteritems():
-                word, pos = feature[0], feature[1]
-                if use_index == True: word, pos, index, index_counter = self.index(word, pos, index, index_counter)
-                rows.append({'id':a.id,'paragraph':parnr,'sentence':sentnr,'word':word,'pos':pos, 'hits':count, 'label':None})
+                word = feature[0]
+                try: pos = feature[1]
+                except: pos = None
+                if min_docfreq > 1: docfreq[word] += 1
+                rows.append({'id':a.id,'paragraph':parnr,'sentence':sentnr,'word':word,'pos':pos, 'hits':count})
+
+        if min_docfreq > 1:
+            relevantwords = [word for word in docfreq if docfreq[word] >= min_docfreq]
+            rows = [row for row in rows if row['word'] in relevantwords]
                
         if unit_level == 'article': columns = ['id','word','pos','hits']
         else: columns = ['id',unit_level,'word','pos','hits']
-        if use_index == True: columns.append('label')
 
-        if use_index == True:
-            for label, id_nr in index.iteritems():
-                row = {'id':None,'paragraph':None,'sentence':None, 'word':id_nr,'pos':None, 'hits': None, 'label':label}
-                rows.append(row)
-        t = Table(rows=rows, columns = columns, cellfunc=dict.get)
-        return t
+        filename = 'features_set%s_offset%s_batchsize%s.csv' % (articleset_id,offset,batchsize)
+        w = csv.writer(open(filename, 'w'))
+        for nr, line in enumerate(rows):
+            if nr == 0: line = [c for c in columns]
+            else: line = [line[c] for c in columns]
+            w.writerow(line)
+        
+        #t = Table(rows=rows, columns = columns, cellfunc=dict.get)
+        #return t
 
-    def index(self, word, pos, index, index_counter):
+    def index(self, word, pos, index={}, index_counter=1):
+        """
+        Currently not used.
+        Indexing saves memory, but perhaps it is better to work in smaller batches using 'offset' and 'batchsize', in which case indexing has less memory to save, and increases processing time, thereby using memory busy for longer.
+        """
         if not word in index:
             index[word] = index_counter
             index_counter += 1
-        if not pos in index:
-            index[pos] = index_counter
-            index_counter += 1
+        if pos:
+            if not pos in index:
+                index[pos] = index_counter
+                index_counter += 1
         word = index[word]
-        pos = index[pos]
+        if pos: pos = index[pos]
         return (word, pos, index, index_counter)
                     
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ from __future__ import unicode_literals, print_function, absolute_import
 
 from amcat.models import Article, Coding, Token, Lemma, Word, AnalysedArticle
 from amcat.tools.toolkit import clean, stripAccents, RepeatReplacer
+from amcat.nlp import sbd
 from django import db
 
 import nltk, numpy
@@ -39,7 +40,7 @@ class featureStream():
     At __init__ the arguments are passed for what features should be used (i.e. words or lemma, strings or id's, ngrams). The 'featurestream' function can then be used to yield these features for a given aricleset and unit level.
     """
     
-    def __init__(self, source='rawtext', language='dutch', use_lemma=True, use_id=True, use_stemming=True, remove_repeating=False, delete_stopwords=False, postagging=True, posfilter=None, ngrams=1, lowercase=True, zeropunctuation=True, marknegations=False, headlinefilter=None, reportparameters=True):
+    def __init__(self, source='rawtext', language='dutch', use_lemma=True, use_id=True, use_stemming=True, remove_repeating=False, delete_stopwords=False, postagging=True, posfilter=None, ngrams=1, lowercase=True, zeropunctuation=False, max_paragraph=None, marknegations=False, headlinefilter=None, reportparameters=True):
         self.source = source
         self.posfilter = posfilter
         self.ngrams = ngrams
@@ -48,6 +49,7 @@ class featureStream():
         self.lowercase = lowercase
         self.marknegations = marknegations
         self.zeropunctuation = zeropunctuation
+        self.max_paragraph = max_paragraph
         
         if use_stemming == True: self.stemmer = nltk.SnowballStemmer(language)
         else: self.stemmer = None
@@ -126,7 +128,9 @@ class featureStream():
         """
         If articles are not parsed, this function gets the raw text, which is then transformed to a list of tokens in self.tokenizeRawText.
         """
-        for s in a.sentences.all():
+        sentences = a.sentences.all()
+        if len(sentences) == 0: sentences = sbd.get_or_create_sentences(a)
+        for s in sentences:
             paragraph = s.parnr
             sentence = s.sentnr
             for word, pos in self.tokenizeRawText(s.sentence):
@@ -152,6 +156,7 @@ class featureStream():
         if self.source == 'rawtext': tokens_per_sentence = self.getTokensFromRawText(a)
 
         for paragraph, sentence, word, pos in tokens_per_sentence:
+            if self.max_paragraph and paragraph > self.max_paragraph: continue
             if self.headlinefilter:
                 if self.headlinefilter == 'exclude' and paragraph == 1: continue
                 if self.headlinefilter == 'only' and not paragraph == 1: continue

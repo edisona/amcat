@@ -339,9 +339,7 @@ class SelectionForm(forms.Form):
         return self.cleaned_data["articlesets"]
 
     def clean_mediums(self):
-        if not self.cleaned_data["mediums"]:
-            return Medium.objects.filter(article__articlesetarticle__articleset__in=self.cleaned_data["articlesets"]).distinct("id")
-        return self.cleaned_data["mediums"]
+        return self.cleaned_data["mediums"] or Medium.objects.all()
 
 
     def clean_article_ids(self):

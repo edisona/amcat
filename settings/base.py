@@ -71,6 +71,13 @@ DATABASES = dict(default=dict(
         PORT = os.environ.get("DJANGO_DB_PORT", ''),
     ))
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+    }
+}
+
 RAVEN_CONFIG = {
     "dsn" : os.environ.get("DJANGO_RAVEN_DSN")
 }
@@ -211,7 +218,7 @@ def get_secret():
     return get_secret()
 
 SECRET_KEY = get_secret()
-FIXTURE_DIRS = ('../amcat', './fixtures')
+FIXTURE_DIRS = (os.path.join(ROOT, "amcat/models"),)
 
 REST_FRAMEWORK = {
     'PAGINATE_BY': 10,

@@ -31,9 +31,11 @@ amcat.selection.hideMessage = function(){
 
 
 amcat.selection.callWebscript = function(name, data, callBack){
+    var url = amcat.selection.apiUrl + 'webscript/' + name + '/run?project=' + amcat.selection.get_project();
+
     $.ajax({
       type: 'POST',
-      url: amcat.selection.apiUrl + 'webscript/' + name + '/run',
+      url: url,
       success: callBack,
       error: function(jqXHR, textStatus){
         console.log('error form data', textStatus);
@@ -190,7 +192,10 @@ $(document).ready(function(){
     
 })
 
-
+amcat.selection.get_project = function(){
+    // This is fugly, I'm sorry..
+    return (/[0-9]+/).exec(window.location.pathname)[0];
+}
 
 amcat.selection.onFormSubmit = function(){
     amcat.selection.setMessage('Loading...')
@@ -201,7 +206,10 @@ amcat.selection.onFormSubmit = function(){
     
     var webscriptName = $('input[name=webscriptToRun]:checked').attr("id"); // name of selected webscript to run
     console.log('script to run', webscriptName);
-    $('#selectionform').attr('action', amcat.selection.apiUrl + 'webscript/' + webscriptName + '/run');
+
+    var url = amcat.selection.apiUrl + 'webscript/' + webscriptName + '/run' + '?project=' + amcat.selection.get_project();
+
+    $('#selectionform').attr('action', url);
     
     amcat.selection.loadIframeTimeout = window.setTimeout(function(){ // in rare cases iframe may not load, and this will give the user some feedback
         var iframeLength = 0;
@@ -305,8 +313,7 @@ amcat.selection.addActionToMainForm = function(webscriptClassName, label){
     $("#webscripts").append($('<input />', {'type':"radio", id:webscriptClassName, name:"webscriptToRun", value:webscriptClassName, 'checked':true}));
     $("#webscripts").append($('<label />', {'for':webscriptClassName, 'id':'radio-additional-label'}).text(label));
     $("#webscripts").buttonset(); 
-    var url = amcat.selection.apiUrl + 'webscript/' + webscriptClassName + '/form';
-    url += '?project=' + document.getElementById("id_projects_0").value;
+    var url = amcat.selection.apiUrl + 'webscript/' + webscriptClassName + '/form?project=' + amcat.selection.get_project();
 
     $.ajax({
       type: 'GET',
@@ -328,7 +335,7 @@ amcat.selection.submitAction = function(webscriptClassName){
     console.log('submitting action');
     $('#dialog-message-content').children().appendTo('#hidden-form-extra'); // move form elements to hidden form (to submit everything)
     //$('#hidden-form input[name=webscriptToRun]').val(webscriptClassName);
-    $('#hidden-form').attr('action', amcat.selection.apiUrl + 'webscript/' + webscriptClassName + '/run');
+    $('#hidden-form').attr('action', amcat.selection.apiUrl + 'webscript/' + webscriptClassName + '/run' + '?project=' + amcat.selection.get_project());
     
     var output = $('#hidden-form select[name=output]').val();
     //console.log('output', output);
@@ -350,8 +357,7 @@ amcat.selection.setDialogButtons = function(){
 }
 
 amcat.selection.actionClick = function(webscriptClassName, el){
-    var url = amcat.selection.apiUrl + 'webscript/' + webscriptClassName + '/form'
-    url += '?project=' + document.getElementById("id_projects_0").value;
+    var url = amcat.selection.apiUrl + 'webscript/' + webscriptClassName + '/form?project=' + amcat.selection.get_project();
     amcat.selection.submitActionWrapper = function(){
         amcat.selection.submitAction(webscriptClassName);
     }
@@ -543,125 +549,89 @@ amcat.selection.aggregation.createTable = function(){
     // });
 }
 
+/*
+ * Function called when a cell is clicked in aggregation-table
+ */
 amcat.selection.aggregation.click = function(x, y, count){
     console.log('click', x, y, count);
-    var formValues = amcat.selection.getFormDict();
-    var addedFormValues = {};
-
+    var form_values = amcat.selection.getFormDict();
+    var added_form_values = {};
     var title = count + ' ' + amcat.selection.aggregation.aggregationType + ' ';
 
-    if(amcat.selection.aggregation.xAxis == 'date'){
-        var startDate = endDate = null;
+    if (amcat.selection.aggregation.xAxis == "date"){
+        var date_clicked = start_date = end_date = new Date(x);
+        var datetype = amcat.selection.aggregation.dateType;
 
-        if(amcat.selection.aggregation.dateType == "year"){
-            var startDate = endDate = new Date(x);
-
-            startDate = startDate.getFullYear() + "-" + (startDate.getMonth() + 1) + "-" + startDate.getUTCDate();
-            endDate = (endDate.getFullYear()+1) + "-" + (endDate.getMonth() + 1) + "-" + (endDate.getUTCDate() );
-            
-        } else if(amcat.selection.aggregation.dateType == "day"){
-            var startDate = new Date(x);
-
-            var endDate = new Date(0);
-            endDate.setUTCSeconds((startDate / 1000) + (24*60*60));
-
-            startDate = startDate.getFullYear() + "-" + (startDate.getMonth() + 1) + "-" + startDate.getUTCDate();
-            endDate = endDate.getFullYear() + "-" + (endDate.getMonth() + 1) + "-" + (endDate.getUTCDate() );
-
-        } else if(isNaN(x) == false){
-            var date = new Date(x);
-            $.each(amcat.selection.aggregation.datesDict, function(i, dateObj){
-                var startDateObj = new Date(dateObj[0]);
-                //console.log('compare', startDateObj, date);
-                if(startDateObj.getTime() == date.getTime()){
-                    //console.log('equal')
-                    endDate = dateObj[1];
-                    startDate = dateObj[0];
-                    return false;
+        if(datetype == "day"){
+            added_form_values["datetype"] = "on";
+            var on_date = start_date.getFullYear() + "-" + (start_date.getMonth() + 1) + "-" + start_date.getUTCDate();
+            added_form_values["on_date"] = amcat.selection.aggregation.reverseDateOrder(on_date);
+            title += ' on ' + added_form_values['on_date'];
+        } else if (datetype == "year"){
+            start_date = start_date.getFullYear() + "-" + (start_date.getMonth() + 1) + "-" + start_date.getUTCDate();
+            end_date = (end_date.getFullYear()+1) + "-" + (end_date.getMonth() + 1) + "-" + (end_date.getUTCDate() );
+        } else if (!isNaN(x)){
+            // Can't really figure out what's going on here, but it works? -- Martijn
+            $.each(amcat.selection.aggregation.datesDict, function(i, dt){
+                var _start = new Date(dt[0]);
+                if(_start.getTime() == date_clicked.getTime()){
+                    start_date = dt[0];
+                    end_date = dt[1];
                 }
             });
         } else {
-            startDate = amcat.selection.aggregation.datesDict[x][0];
-            endDate = amcat.selection.aggregation.datesDict[x][1];
+            start_date = amcat.selection.aggregation.datesDict[x][0];
+            end_date = amcat.selection.aggregation.datesDict[x][1];
         }
 
-        if(formValues['datetype'][0] == 'between' || formValues['datetype'][0] == 'after'){
-            var queriedStartDate = amcat.selection.aggregation.reverseDateOrder(formValues['startDate'][0]);
-
-            if(queriedStartDate >= startDate){
-                startDate = queriedStartDate;
-            }
+        // Only datetype == day results in a datetype which is not 'between'
+        if (datetype != "day"){
+            added_form_values["datetype"] = "between";
+            added_form_values["start_date"] = amcat.selection.aggregation.reverseDateOrder(start_date);
+            added_form_values["end_date"] = amcat.selection.aggregation.reverseDateOrder(end_date);
+            title += ' between ' + added_form_values['start_date'] + ' and ' + added_form_values['end_date']
         }
-
-        if(formValues['datetype'][0] == 'between' || formValues['datetype'][0] == 'before'){
-            var queriedEndDate = amcat.selection.aggregation.reverseDateOrder(formValues['endDate'][0]);
-
-            if(queriedEndDate <= endDate){
-                endDate = queriedEndDate;
-            }
-        }
-
-        if (formValues['datetype'][0] == 'on'){
-            startDate = new Date(amcat.selection.aggregation.reverseDateOrder(formValues['onDate'][0]));
-            endDate = new Date(0);
-
-            endDate.setUTCSeconds((startDate / 1000) + (24*60*60));
-
-            startDate = startDate.getFullYear() + "-" + (startDate.getMonth() + 1) + "-" + startDate.getUTCDate();
-            endDate = endDate.getFullYear() + "-" + (endDate.getMonth() + 1) + "-" + (endDate.getUTCDate() );
-            
-        }
-
-
-        startDate = amcat.selection.aggregation.reverseDateOrder(startDate);
-        endDate = amcat.selection.aggregation.reverseDateOrder(endDate);
-
-        addedFormValues['datetype'] = 'between';
-        addedFormValues['startDate'] = startDate; // change 2008-10-01 to 01-10-2008
-        addedFormValues['endDate'] = endDate; 
-
-        title += ' between ' + addedFormValues['startDate'] + ' and ' + addedFormValues['endDate']
     }
-    
-    
+
     if(amcat.selection.aggregation.xAxis == 'medium'){
         var mediumLabel = x
         var medium = parseInt(mediumLabel.split(' - ')[0], 10);
-        addedFormValues['mediums'] = medium;
+        added_form_values['mediums'] = medium;
         title += ' in medium ' + mediumLabel;
     }
     
     if(amcat.selection.aggregation.yAxis == 'medium'){
         var mediumLabel = y;
         var medium = parseInt(mediumLabel.split(' - ')[0], 10);
-        addedFormValues['mediums'] = medium;
+        added_form_values['mediums'] = medium;
         title += ' in medium ' + mediumLabel;
     }
     
     if(amcat.selection.aggregation.yAxis == 'searchTerm'){
-        var query = y;
-        addedFormValues['query'] = query;
+        var query = amcat.selection.aggregation.labels[y];
+        if (query === undefined) query = y;
+        added_form_values['query'] = query;
         title += ' for search term &quot;' + query + '&quot;';
     }
     
-    addedFormValues['columns'] = ['article_id', 'date', 'medium_id', 'medium_name', 'headline'];
-    addedFormValues['outputTypeAl'] = 'table';
-    addedFormValues['output'] = 'html';
-    addedFormValues['length'] = 50;
-    $.extend(formValues, addedFormValues);
+    added_form_values['columns'] = ['article_id', 'date', 'medium_id', 'medium_name', 'headline'];
+    added_form_values['outputTypeAl'] = 'table';
+    added_form_values['output'] = 'html';
+    added_form_values['length'] = 50;
+    $.extend(form_values, added_form_values);
     $('.added-hidden-form-fields').remove();
-    for(key in addedFormValues){
+    for(key in added_form_values){
         var values;
-        if(typeof addedFormValues[key] == "object"){
-            values = addedFormValues[key];
+        if(typeof added_form_values[key] == "object"){
+            values = added_form_values[key];
         } else {
-            values = [addedFormValues[key]];
+            values = [added_form_values[key]];
         }
         $.each(values, function(i, value){
             $('#hidden-form').append($('<input />').attr({'type':'hidden', 'value':value, 'name':key, 'class':'added-hidden-form-fields'}));
         });
     }
-    var data = $.param(formValues, true);
+    var data = $.param(form_values, true);
     $('#dialog-message-content').html('Loading..<div style="height:300px"></div>');
     $("#dialog-message").dialog({
         modal: true,

@@ -114,8 +114,6 @@ def get_table_sentence_codings_article(codedarticle, language):
 
     The cells contain domain (deserialized) objects
     """
-    #import pdb
-    #pdb.set_trace()
     result = ObjectTable(rows = list(codedarticle.sentence_codings))
     result.addColumn('id')
     result.addColumn(lambda x:x.sentence_id, 'sentence')
@@ -123,15 +121,19 @@ def get_table_sentence_codings_article(codedarticle, language):
         result.addColumn(CodingColumn(field, language))
     return result
 
-# Will result in error when not available.
-CB_TYPE = CodingSchemaFieldType.objects.get(name="Codebook")
-
 def _getFieldObj(field):
     """returns a matching Django Field object 
     for a amcat.models.coding.codingschemafield.CodingSchemaField object"""
+
+    global CB_TYPE
+    if CB_TYPE is None:
+        CB_TYPE = CodingSchemaFieldType.objects.get(name="Codebook")
+
+    
     yield forms.CharField(label=field.label, initial=field.default,
                             widget=forms.TextInput(), required=field.required)
 
+    
     if field.fieldtype == CB_TYPE and field.split_codebook:
         print(field)
         
@@ -222,8 +224,6 @@ class TestCodingToolkit(amcattest.PolicyTestCase):
         
     def test_table_codings(self):
         """Is the codings table correct?"""
-        #import pdb
-        #pdb.set_trace()
         ca = CodedArticle(self.an1)
         t = get_table_sentence_codings_article(ca, ca.codingjob.coder.userprofile.language)
         self.assertIsNotNone(t)

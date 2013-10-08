@@ -16,29 +16,38 @@
 # You should have received a copy of the GNU Affero General Public        #
 # License along with AmCAT.  If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
+import logging;
+
+from django.core.management import BaseCommand, CommandError
+
+from amcat.models import AmCAT
+from amcat.scripts.actions.cache_articleset_mediums import CacheArticleSetMediums
 
 
-from webscript import WebScript
-from django import forms
-from amcat.scripts.processors.export_codingjobs import ExportCodingjobsScript, CodingjobsForm
-
-import logging
 log = logging.getLogger(__name__)
 
-class ExportCodingjobsForm(CodingjobsForm):
-    pass
+ERR = "You should pass an action: on, off or warm."
 
-    
-class ExportCodingjobs(WebScript):
-    name = "Export Codingjob"
-    form_template = None
-    form = ExportCodingjobsForm
-    displayLocation = ()
-    output_template = None
-    
-    
-    def run(self):
-        result = ExportCodingjobsScript(self.data).run()
-        return self.outputResponse(result, ExportCodingjobsScript.output_type)
-        
-    
+class Command(BaseCommand):
+    args = '[on|off|warm]'
+    help = 'Enables / disables / warms medium caching (see articleset.py). Warm call on when done.'
+
+    def handle(self, *args, **options):
+        if not len(args) or args[0] not in ("on", "off", "warm"):
+            raise CommandError(ERR)
+
+        if args[0] == "on":
+            log.info("Enabling medium caching..")
+            enable = True
+
+        if args[0] == "off":
+            log.info("Disabling medium caching..")
+            enable = False
+
+        if args[0] in ("on", "off"):
+            AmCAT.enable_mediums_cache(enable)
+            log.info("OK.")
+
+        if args[0] == "warm":
+            CacheArticleSetMediums().run()
+            self.handle("on")

@@ -71,6 +71,14 @@ class ArticleListForm(amcat.scripts.forms.ArticleColumnsForm, amcat.scripts.form
             # return self.cleaned_data['sortColumn']
         # return None
 
+FIELD_ONLY = {
+    "article_id" : "id",
+    "medium_name" : "medium__name",
+    "medium_id" : "medium__id",
+    "project_name" : "project__name",
+    "project_id" : "project__id",
+}
+
 
 class ArticleListScript(script.Script):
     """
@@ -95,8 +103,15 @@ class ArticleListScript(script.Script):
             if self.options['sortColumn']:
                 qs = qs.order_by(('-' if self.options['sortOrder'] == 'desc' else '')
                                  + self.options['sortColumn'])
-            qs = qs[start:start+length].select_related('medium__name', 'medium')
-            return qs
+            qs = qs[start:start+length]
+
+            columns = map(lambda k : FIELD_ONLY.get(k, k), set(self.options['columns']))
+            sr = []
+            if "project__name" in columns:
+                sr.append("project")
+            if "medium__name" in columns:
+                sr.append("medium")
+            return qs.select_related(*sr).only("id", *columns)
         else:
 
             if self.options['highlight']:

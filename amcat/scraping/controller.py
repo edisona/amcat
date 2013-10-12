@@ -128,7 +128,7 @@ class RobustController(Controller):
         self.errors = [] 
     
     def _scrape(self, scraper):
-        log.info("RobustController starting {scraper.__class__.__name__} for date '{scraper.options[date]}'".format(**locals()))
+        log.info("RobustController starting {scraper.__class__.__name__} for date '{date}'".format(date = 'date' in scraper.options.keys() and scraper.options['date'] or "unknown",**locals()))
         result = []
 
         try:

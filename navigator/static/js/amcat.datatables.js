@@ -44,7 +44,7 @@ _AMCAT_DEFAULT_OPTS = {
     },
     "bDeferRender": true,
     "bFilter" : false,
-    "iDisplayLength" : 100,
+    "iDisplayLength" : 9999,
     "bProcessing" : true
 };
 

@@ -1003,6 +1003,15 @@ annotator.initPage = function(){
         }
     });
     
+    $(document).bind("keydown", "ctrl+i", function(event){
+        event.preventDefault();
+        $("#irrelevant-button").click();
+    });
+
+    $(document).bind("keydown", "ctrl+d", function(event){
+        event.preventDefault();
+        $("#save-continue-button").click();
+    });
     
     $(document).bind('keydown', 'ctrl+s', function(event){
         event.preventDefault();

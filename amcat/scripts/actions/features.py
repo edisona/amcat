@@ -42,6 +42,10 @@ class Features(Script):
         offset = forms.IntegerField(initial=0)
         batchsize = forms.IntegerField(initial = 1000, max_value=2500)
         mindocfreq = forms.IntegerField(initial=0) ## usefull for reducing size of output, but perhaps this problem should be for the user and not the server.
+
+        POS_LIST = (('noun','noun'),('verb','verb'),('NN','NN'))
+        posfilter = forms.MultipleChoiceField(choices=POS_LIST, required=False, initial=['noun','verb','NN'])
+        use_stemming = forms.BooleanField(required=False, initial=True)
         
         # implement more options later 
         #features_type = forms.ChoiceField(['Stemmed words with POS'])
@@ -57,12 +61,14 @@ class Features(Script):
         offset = self.options['offset']
         batchsize = self.options['batchsize']
 
-        ## implement more options later
-        featurestream_parameters = {'posfilter':['noun','NN','verb'], 'zeropunctuation':True}
+        use_stemming = self.options['use_stemming']
+        posfilter = self.options['posfilter']
+        
+        featurestream_parameters = {'posfilter':posfilter, 'use_stemming':use_stemming, 'postagging':True, 'zeropunctuation':True, 'lowercase':True}
+
         f = featureStream(**featurestream_parameters)
 
         rows = []
-        index, index_counter = {}, 1
         docfreq = collections.defaultdict(lambda:0)
         for a,parnr,sentnr,features in f.streamFeaturesPerUnit(articleset_id=articleset_id, unit_level=unit_level, offset=offset, batchsize=batchsize, verbose=True):
             for feature, count in features.iteritems():

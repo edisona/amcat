@@ -40,7 +40,7 @@ class featureStream():
     At __init__ the arguments are passed for what features should be used (i.e. words or lemma, strings or id's, ngrams). The 'featurestream' function can then be used to yield these features for a given aricleset and unit level.
     """
     
-    def __init__(self, source='rawtext', language='dutch', use_lemma=True, use_id=True, use_stemming=True, remove_repeating=False, delete_stopwords=False, postagging=True, posfilter=None, ngrams=1, lowercase=True, zeropunctuation=False, max_paragraph=None, marknegations=False, headlinefilter=None, reportparameters=True):
+    def __init__(self, source='rawtext', language='dutch', use_lemma=False, use_id=True, use_stemming=False, remove_repeating=False, delete_stopwords=False, postagging=True, posfilter=None, ngrams=1, lowercase=False, zeropunctuation=False, max_paragraph=None, marknegations=False, headlinefilter=None, reportparameters=True):
         self.source = source
         self.posfilter = posfilter
         self.ngrams = ngrams
@@ -71,7 +71,9 @@ class featureStream():
             self.use_lemma = False
             self.use_id = False
             self.tokenizer = nltk.tokenize.RegexpTokenizer(r'\w+|[^\w\s]+')
-            if posfilter or (postagging == True): self.tagger = self.taggerCombo(language)
+            if posfilter or (postagging == True):
+                self.postagging = True
+                self.tagger = self.taggerCombo(language)
             
         if reportparameters == True: self.reportParameters()
 
